@@ -47,8 +47,9 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
+    <Compile Include="Regex.fs" />
     <Compile Include="String.fs" />
-    <Compile Include="Document.fs" />
+    <Compile Include="DataExtractor.fs" />
     <None Include="Script.fsx" />
     <None Include="packages.config" />
   </ItemGroup>

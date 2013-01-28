@@ -86,3 +86,28 @@ module Regex =
     /// <param name="pattern">The regular expression pattern object.</param>
     /// <param name="inputString">The input string.</param>
     let isMatch pattern inputString = Regex(pattern).IsMatch inputString
+
+    /// <summary>Removes substrings that match a pattern from the specified input string.</summary>
+    /// <param name="pattern">The regular expression pattern object.</param>
+    /// <param name="inputString">The input string.</param>
+    let remove pattern inputString =
+        let regex = compile pattern
+        regex.Replace(inputString, "")
+
+    module CommonPatterns =
+        
+        let Name     = "[a-zA-Z''-'\s]{1,40}"
+        let SSN      = "\d{3}-\d{2}-\d{4}"
+        let Phone    = "[01]?[- .]?(\([2-9]\d{2}\)|[2-9]\d{2})[- .]?\d{3}[- .]?\d{4}"
+        let Email    = "(?(\")(\".+?\"@)|(([0-9a-zA-Z]((\.(?!\.))|[-!#\$%&'\*\+/=\?\^`\{\}\|~\w])*)(?<=[0-9a-zA-Z])@))(?(\[)(\[(\d{1,3}\.){3}\d{1,3}\])|(([0-9a-zA-Z][-\w]*[0-9a-zA-Z]\.)+[a-zA-Z]{2,6}))"
+        let URI      = "(ht|f)tp(s?)\:\/\/[0-9a-zA-Z]([-.\w]*[0-9a-zA-Z])*(:(0-9)*)*(\/?)([a-zA-Z0-9\-\.\?\,\'\/\\\+&amp;%\$#_]*)?"
+        let ZIP      = "(\d{5}-\d{4}|\d{5}|\d{9})$|^([a-zA-Z]\d[a-zA-Z] \d[a-zA-Z]\d)"
+        let Currency = "(-)?\d+(\.\d\d)?"
+
+        let NameRegex     = compile Name
+        let SSNRegex      = compile SSN
+        let PhoneRegex    = compile Phone
+        let EmailRegex    = compile Email
+        let URIRegex      = compile URI
+        let ZIPRegex      = compile ZIP
+        let CurrencyRegex = compile Currency

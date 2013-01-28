@@ -13,7 +13,29 @@ module String =
         regex.Replace(str, " ")
         |> fun x -> regex'.Replace(x, " ")
 
+    let stripInlineJsCss inputString = Regex.remove "(?is)(<script.*?</script>|<style.*?</style>)" inputString
+
+    let stripTags inputString = Regex.remove "(?s)<.+?>" inputString
+
     let decodeHtml str = WebUtility.HtmlDecode str
-    
-    let checkEmpty = function "" -> None | text -> stripSpaces text |> decodeHtml |> Some
+
+    let cleanHtml str =    
+        stripSpaces str
+        |> stripInlineJsCss
+        |> decodeHtml
+        |> fun x -> x.Trim()
+
+    let removePunctuation inputString = Regex.remove "\\p{P}+" inputString
+
+//    let checkEmpty =
+//        function
+//            | ""  -> None
+//            | str ->
+//                stripSpaces str
+//                |> stripInlineJsCss
+//                |> decodeHtml
+//                |> fun x -> x.Trim()
+//                |> function
+//                    | ""  -> None
+//                    | str -> Some str
 

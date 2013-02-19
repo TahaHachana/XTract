@@ -3,7 +3,13 @@ XTract
 
 About
 -----
-A library for collecting data about and from HTML.
+
+A library for collecting data from HTML.
+
+NuGet
+-----
+
+	PM> Install-Package XTract
 
 MIT License
 -----------

@@ -24,6 +24,7 @@ let fetch (url : string) =
 let url = "http://fsharp-hub.apphb.com/"
 let html = fetch url
 
+// Define some data extractors
 let avatar =
     Extractor.New "avatar" "div:nth-child(1).anchor > div:nth-child(2) > div.row.data-row > div.col-md-5 > div:nth-child(1).media > a:nth-child(1).media-left > img:nth-child(1).avatar.lazy" //".lazy"
     |> Extractor.WithAttributes ["data-original"]
@@ -36,11 +37,13 @@ let tweet =
     Extractor.New "tweet" "div > div > div > div.media-body.twitter-media-body > p"
     |> Extractor.WithAttributes ["text"]
 
+// Initialize a scraper
 let scraper = Scraper [avatar; screenName; tweet]
 
-let json = scraper.Scrape html
-let json' = scraper.ScrapeAll html
+let firstMatch = scraper.Scrape html
+let allMatches = scraper.ScrapeAll html
 
+// Work with the data in a strongly-typed fashion
 type Tweet =
     {
       ``avatar-data-original``: string
@@ -49,11 +52,9 @@ type Tweet =
     }
 
 let tweetRecord =
-    JsonConvert.DeserializeObject(json, typeof<Tweet>)
+    JsonConvert.DeserializeObject(firstMatch, typeof<Tweet>)
     :?> Tweet
 
 let tweetRecords =
-    JsonConvert.DeserializeObject(json', typeof<Tweet list>)
+    JsonConvert.DeserializeObject(allMatches, typeof<Tweet list>)
     :?> Tweet list
-
-tweetRecords.Length

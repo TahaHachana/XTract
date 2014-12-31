@@ -37,6 +37,8 @@ let tweet =
     Extractor.New "tweet" "div > div > div > div.media-body.twitter-media-body > p"
     |> Extractor.WithAttributes ["text"]
 
+let extractors = seq {yield avatar; yield screenName; yield tweet}
+
 // Initialize a scraper
 let scraper = Scraper [avatar; screenName; tweet]
 
@@ -58,3 +60,5 @@ let tweetRecord =
 let tweetRecords =
     JsonConvert.DeserializeObject(allMatches, typeof<Tweet list>)
     :?> Tweet list
+
+tweetRecords.Length

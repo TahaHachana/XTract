@@ -2,11 +2,11 @@
 <package >
   <metadata>
     <id>XTract</id>
-    <version>0.1.1</version>
+    <version>0.2.0</version>
     <authors>Taha Hachana</authors>
     <owners>Taha Hachana</owners>
     <projectUrl>https://github.com/TahaHachana/XTract</projectUrl>
-    <iconUrl></iconUrl>
+    <iconUrl>https://raw.githubusercontent.com/TahaHachana/XTract/master/Src/logo.png</iconUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>F# screen scraping package.</description>
     <releaseNotes></releaseNotes>

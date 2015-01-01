@@ -3,7 +3,7 @@ open System.IO
 open System.Text.RegularExpressions
 
 let nuget = Path.Combine(__SOURCE_DIRECTORY__, "nuget.exe")
-let nuspec = Path.Combine(__SOURCE_DIRECTORY__, "XPlot.GoogleCharts.nuspec")
+let nuspec = Path.Combine(__SOURCE_DIRECTORY__, "XTract.nuspec")
 
 let nuspecText = File.ReadAllText nuspec
 

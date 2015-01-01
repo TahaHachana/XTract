@@ -3,7 +3,6 @@
 #r "System.Net.Http.dll"
 #r "XTract.dll"
 
-open Newtonsoft.Json
 open System.Net.Http
 open XTract
 
@@ -39,12 +38,6 @@ let tweet =
 
 let extractors = seq {yield avatar; yield screenName; yield tweet}
 
-// Initialize a scraper
-let scraper = Scraper [avatar; screenName; tweet]
-
-let firstMatch = scraper.Scrape html
-let allMatches = scraper.ScrapeAll html
-
 // Work with the data in a strongly-typed fashion
 type Tweet =
     {
@@ -53,12 +46,14 @@ type Tweet =
       ``tweet-text``: string
     }
 
-let tweetRecord =
-    JsonConvert.DeserializeObject(firstMatch, typeof<Tweet>)
-    :?> Tweet
+// Initialize a scraper
+let scraper = Scraper<Tweet> [avatar; screenName; tweet]
 
-let tweetRecords =
-    JsonConvert.DeserializeObject(allMatches, typeof<Tweet list>)
-    :?> Tweet list
+let firstMatch = scraper.Scrape html
+let allMatches = scraper.ScrapeAll html
 
-tweetRecords.Length
+allMatches.Length
+
+let data = scraper.GetData() |> Array.length
+
+let jsonData = scraper.GetJsonData()

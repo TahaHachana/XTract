@@ -5,6 +5,7 @@ open HtmlAgilityPack
 open Newtonsoft.Json
 open System.Collections.Generic
 open System.Text.RegularExpressions
+open System.Collections.Concurrent
 
 /// A type for describing a property to scrape.
 /// Fields:
@@ -101,7 +102,9 @@ module private Utils =
             |> List.map (fun (extractor, enumerator, _) -> extractor, enumerator)
             |> extractAll (acc @ acc')
 
-type Scraper(extractors) =
+type Scraper<'T>(extractors) =
+
+    let dataStore = ConcurrentBag<'T>()
 
     member __.Scrape html =
         let doc = HtmlDocument()
@@ -116,7 +119,13 @@ type Scraper(extractors) =
             | _ -> x, Some selection        
         )
         |> List.iter (fun (x, htmlNode) -> Utils.extract x htmlNode dictionary)
-        JsonConvert.SerializeObject(dictionary, Formatting.Indented)
+//        JsonConvert.SerializeObject(dictionary, Formatting.Indented)
+        let record =
+            let arr = dictionary.Values |> Seq.toArray |> Array.map box
+            Microsoft.FSharp.Reflection.FSharpValue.MakeRecord(typeof<'T>, arr)
+            :?> 'T
+        dataStore.Add record
+        record
 
     member __.ScrapeAll html =
         let doc = HtmlDocument()
@@ -131,6 +140,19 @@ type Scraper(extractors) =
                     | _ -> x, Some <| selection.GetEnumerator()
             ]
         Utils.extractAll [] enums
+        |> List.map (fun x ->
+            let record =
+                let arr = x.Values |> Seq.toArray |> Array.map box
+                Microsoft.FSharp.Reflection.FSharpValue.MakeRecord(typeof<'T>, arr)
+                :?> 'T     
+            dataStore.Add record
+            record
+        )
+
+    member __.GetData() = dataStore.ToArray()
+
+    member __.GetJsonData() =
+        dataStore.ToArray()
         |> fun x -> JsonConvert.SerializeObject(x, Formatting.Indented)
 
 

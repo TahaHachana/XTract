@@ -15,7 +15,6 @@ Usage
 -----
 
 ```fsharp
-open Newtonsoft.Json
 open System.Net.Http
 open XTract
 
@@ -38,38 +37,47 @@ let html = fetch url
 
 // Define some data extractors
 let avatar =
-    Extractor.New "avatar" "div:nth-child(1).anchor > div:nth-child(2) > div.row.data-row > div.col-md-5 > div:nth-child(1).media > a:nth-child(1).media-left > img:nth-child(1).avatar.lazy" //".lazy"
+    "div:nth-child(1).anchor > div:nth-child(2) > div.row.data-row > div.col-md-5 > div:nth-child(1).media > a:nth-child(1).media-left > img:nth-child(1).avatar.lazy"
+    |> Extractor.New
     |> Extractor.WithAttributes ["data-original"]
 
-let screenName =  
-    Extractor.New "screenName" "div > div > div.media-body.twitter-media-body > h4.media-heading > a"
-    |> Extractor.WithAttributes ["text"]
+let screenName =
+    "div > div > div.media-body.twitter-media-body > h4.media-heading > a"
+    |> Extractor.New
+    |> Extractor.WithAttributes ["text"; "href"]
 
 let tweet =
-    Extractor.New "tweet" "div > div > div > div.media-body.twitter-media-body > p"
+    "div > div > div > div.media-body.twitter-media-body > p"
+    |> Extractor.New
     |> Extractor.WithAttributes ["text"]
 
-// Initialize a scraper
-let scraper = Scraper [avatar; screenName; tweet]
-
-let firstMatch = scraper.Scrape html
-let allMatches = scraper.ScrapeAll html
-
-// Work with the data in a strongly-typed fashion
+// Work with the data in a strongly-typed fashion,
+// the fields must match the extractors order.
 type Tweet =
     {
-      ``avatar-data-original``: string
-      ``screenName-text``: string
-      ``tweet-text``: string
+        // First extractor attributes
+        avatar: string
+        // Second extractor attributes
+        screenName: string
+        account: string
+        // Third extractor attributes
+        tweet: string
     }
 
-let tweetRecord =
-    JsonConvert.DeserializeObject(firstMatch, typeof<Tweet>)
-    :?> Tweet
+// Initialize a scraper
+let scraper = Scraper<Tweet> [avatar; screenName; tweet]
 
-let tweetRecords =
-    JsonConvert.DeserializeObject(allMatches, typeof<Tweet list>)
-    :?> Tweet list
+// Scrape a single item
+let firstMatch = scraper.Scrape html
+
+// Or scrape all the items
+let allMatches = scraper.ScrapeAll html
+
+// Scrape multiple pages and let the scraper handle storing
+// the records, the get the data as an array or in JSON format.
+let data = scraper.GetData()
+
+let jsonData = scraper.GetJsonData()
 ```
 
 Contact

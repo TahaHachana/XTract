@@ -5,6 +5,7 @@ open Fizzler.Systems.HtmlAgilityPack
 open HtmlAgilityPack
 open Microsoft.FSharp.Reflection
 open Newtonsoft.Json
+open SpreadSharp
 open System.Collections.Generic
 open System.IO
 open System.Text.RegularExpressions
@@ -178,3 +179,6 @@ type Scraper<'T>(extractors) =
         csv.WriteRecords(dataStore)
         sw.Flush()
         sw.Dispose()
+
+    member __.SaveExcel(path) =
+        Records.saveAs dataStore typeof<'T> path

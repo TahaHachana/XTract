@@ -51,7 +51,11 @@ let data = scraper.Data()
 
 let jsonData = scraper.JsonData()
 
-// Save a CSV
+// Save as CSV 
 let desktop = Environment.GetFolderPath Environment.SpecialFolder.Desktop
 let path = Path.Combine(desktop, "data.csv")
 scraper.SaveCsv(path)
+
+// Save an Excel workbook
+let path' = Path.Combine(desktop, "data.xlsx")
+scraper.SaveExcel path'

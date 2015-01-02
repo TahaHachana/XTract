@@ -2,20 +2,21 @@
 <package >
   <metadata>
     <id>XTract</id>
-    <version>0.2.1</version>
+    <version>0.2.2</version>
     <authors>Taha Hachana</authors>
     <owners>Taha Hachana</owners>
     <projectUrl>https://github.com/TahaHachana/XTract</projectUrl>
     <iconUrl>https://raw.githubusercontent.com/TahaHachana/XTract/master/Src/logo.png</iconUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>F# screen scraping package.</description>
-    <releaseNotes>Constrain scrapers to an F# record type.</releaseNotes>
-    <tags>F# SCREEN SCRAPING SCRAPE HTML DATA</tags>
+    <releaseNotes>CSV export.</releaseNotes>
+    <tags>F# SCREEN SCRAPING SCRAPE HTML DATA MINING</tags>
     <dependencies>
       <dependency id="Fizzler" version="1.0.0" />
       <dependency id="Fizzler.Systems.HtmlAgilityPack" version="1.0.0" />
       <dependency id="HtmlAgilityPack" version="1.4.9" />
       <dependency id="Newtonsoft.Json" version="6.0.7" />
+      <dependency id="CsvHelper" version="2.10.0" />
     </dependencies>
   </metadata>
 </package>

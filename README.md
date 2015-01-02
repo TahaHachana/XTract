@@ -15,25 +15,9 @@ Usage
 -----
 
 ```fsharp
-open System.Net.Http
+open System
+open System.IO
 open XTract
-
-let client = new HttpClient()
-
-client.DefaultRequestHeaders.Add
-    ("user-agent", 
-     "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36")
-
-let fetch (url : string) = 
-    client.GetAsync url
-    |> Async.AwaitTask
-    |> Async.RunSynchronously
-    |> fun x -> x.Content.ReadAsStringAsync()
-    |> Async.AwaitTask
-    |> Async.RunSynchronously
-
-let url = "http://fsharp-hub.apphb.com/"
-let html = fetch url
 
 // Define some data extractors
 let avatar =
@@ -67,17 +51,24 @@ type Tweet =
 // Initialize a scraper
 let scraper = Scraper<Tweet> [avatar; screenName; tweet]
 
+let url = "http://fsharp-hub.apphb.com/"
+
 // Scrape a single item
-let firstMatch = scraper.Scrape html
+let firstMatch = scraper.Scrape url
 
 // Or scrape all the items
-let allMatches = scraper.ScrapeAll html
+let allMatches = scraper.ScrapeAll url
 
 // Scrape multiple pages and let the scraper handle storing
-// the records, the get the data as an array or in JSON format.
-let data = scraper.GetData()
+// the records, then get the data as an array or in JSON format.
+let data = scraper.Data()
 
-let jsonData = scraper.GetJsonData()
+let jsonData = scraper.JsonData()
+
+// Save a CSV
+let desktop = Environment.GetFolderPath Environment.SpecialFolder.Desktop
+let path = Path.Combine(desktop, "data.csv")
+scraper.SaveCsv(path)
 ```
 
 Contact

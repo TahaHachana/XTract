@@ -61,6 +61,10 @@
     <None Include="logo.png" />
   </ItemGroup>
   <ItemGroup>
+    <Reference Include="CsvHelper">
+      <HintPath>packages\CsvHelper.2.10.0\lib\net40-client\CsvHelper.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="Fizzler">
       <HintPath>packages\Fizzler.1.0.0\lib\net35\Fizzler.dll</HintPath>
       <Private>True</Private>

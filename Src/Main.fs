@@ -1,10 +1,12 @@
 ﻿namespace XTract
 
+open CsvHelper
 open Fizzler.Systems.HtmlAgilityPack
 open HtmlAgilityPack
 open Microsoft.FSharp.Reflection
 open Newtonsoft.Json
 open System.Collections.Generic
+open System.IO
 open System.Text.RegularExpressions
 open System.Collections.Concurrent
 
@@ -169,3 +171,10 @@ type Scraper<'T>(extractors) =
     member __.JsonData() =
         dataStore.ToArray()
         |> fun x -> JsonConvert.SerializeObject(x, Formatting.Indented)
+
+    member __.SaveCsv(path) =
+        let sw = File.CreateText(path)
+        let csv = new CsvWriter(sw)
+        csv.WriteRecords(dataStore)
+        sw.Flush()
+        sw.Dispose()

@@ -1,6 +1,8 @@
 ﻿#I @"bin\Release\"
 #r "XTract.dll"
 
+open System
+open System.IO
 open XTract
 
 // Define some data extractors
@@ -44,7 +46,12 @@ let firstMatch = scraper.Scrape url
 let allMatches = scraper.ScrapeAll url
 
 // Scrape multiple pages and let the scraper handle storing
-// the records, the get the data as an array or in JSON format.
+// the records, then get the data as an array or in JSON format.
 let data = scraper.Data()
 
 let jsonData = scraper.JsonData()
+
+// Save a CSV
+let desktop = Environment.GetFolderPath Environment.SpecialFolder.Desktop
+let path = Path.Combine(desktop, "data.csv")
+scraper.SaveCsv(path)

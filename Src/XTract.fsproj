@@ -57,8 +57,8 @@
     <None Include="Tests.fsx" />
     <Content Include="packages.config" />
     <Content Include="app.config" />
-    <None Include="logo.svg" />
     <None Include="logo.png" />
+    <None Include="logo.svg" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="CsvHelper">

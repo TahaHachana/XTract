@@ -91,53 +91,81 @@ module private Utils =
             |> List.map (fun (extractor, enumerator, _) -> extractor, enumerator)
             |> extractAll (acc @ acc')
 
+    let (|Html|Url|) input =
+        match Regex("(ht|f)tp(s?)\:\/\/[0-9a-zA-Z]([-.\w]*[0-9a-zA-Z])*(:(0-9)*)*(\/?)([a-zA-Z0-9\-\.\?\,\'\/\\\+&amp;%\$#_]*)?")
+            .IsMatch(input) with
+        | false -> Html
+        | true -> Url
+
+    let scrape<'T> html extractors (dataStore:ConcurrentBag<'T>) =
+                let doc = HtmlDocument()
+                doc.LoadHtml html
+                let root = doc.DocumentNode
+                let dictionary = Dictionary<string, string>()
+                extractors
+                |> List.map (fun x -> 
+                       let selection = root.QuerySelector(x.selector)
+                       match selection with
+                       | null -> x, None
+                       | _ -> x, Some selection)
+                |> List.iter (fun (x, htmlNode) -> extract x htmlNode dictionary)
+                let record = 
+                    let arr = 
+                        dictionary.Values
+                        |> Seq.toArray
+                        |> Array.map box
+                    FSharpValue.MakeRecord(typeof<'T>, arr) :?> 'T
+                dataStore.Add record
+                Some record
+    
+    let scrapeAll<'T> html extractors (dataStore:ConcurrentBag<'T>) =
+                let doc = HtmlDocument()
+                doc.LoadHtml html
+                let root = doc.DocumentNode
+        
+                let enums = 
+                    [ for x in extractors -> 
+                          let selection = root.QuerySelectorAll(x.selector)
+                          match selection with
+                          | null -> x, None
+                          | _ -> x, Some <| selection.GetEnumerator() ]
+                extractAll [] enums |> List.map (fun x -> 
+                                                 let record = 
+                                                     let arr = 
+                                                         x.Values
+                                                         |> Seq.toArray
+                                                         |> Array.map box
+                                                     FSharpValue.MakeRecord(typeof<'T>, arr) :?> 'T
+                                                 dataStore.Add record
+                                                 record) |> Some
+
 type Scraper<'T>(extractors) = 
     let dataStore = ConcurrentBag<'T>()
     
-    member __.Scrape html =
-        let doc = HtmlDocument()
-        doc.LoadHtml html
-        let root = doc.DocumentNode
-        let dictionary = Dictionary<string, string>()
-        extractors
-        |> List.map (fun x -> 
-               let selection = root.QuerySelector(x.selector)
-               match selection with
-               | null -> x, None
-               | _ -> x, Some selection)
-        |> List.iter (fun (x, htmlNode) -> Utils.extract x htmlNode dictionary)
-        let record = 
-            let arr = 
-                dictionary.Values
-                |> Seq.toArray
-                |> Array.map box
-            FSharpValue.MakeRecord(typeof<'T>, arr) :?> 'T
-        dataStore.Add record
-        record
-    
-    member __.ScrapeAll html = 
-        let doc = HtmlDocument()
-        doc.LoadHtml html
-        let root = doc.DocumentNode
-        
-        let enums = 
-            [ for x in extractors -> 
-                  let selection = root.QuerySelectorAll(x.selector)
-                  match selection with
-                  | null -> x, None
-                  | _ -> x, Some <| selection.GetEnumerator() ]
-        Utils.extractAll [] enums |> List.map (fun x -> 
-                                         let record = 
-                                             let arr = 
-                                                 x.Values
-                                                 |> Seq.toArray
-                                                 |> Array.map box
-                                             FSharpValue.MakeRecord(typeof<'T>, arr) :?> 'T
-                                         dataStore.Add record
-                                         record)
-    
-    member __.GetData() = dataStore.ToArray()
+    member __.Scrape input =
+        try
+            match input with
+            | Utils.Html -> Utils.scrape<'T> input extractors dataStore
+            | Utils.Url ->
+                let html = Http.get input
+                match html with
+                | None -> None
+                | Some html -> Utils.scrape<'T> html extractors dataStore
+        with _ -> None
 
-    member __.GetJsonData() =
+    member __.ScrapeAll input = 
+        try
+            match input with
+            | Utils.Html -> Utils.scrapeAll<'T> input extractors dataStore
+            | Utils.Url ->
+                let html = Http.get input
+                match html with
+                | None -> None
+                | Some html -> Utils.scrapeAll<'T> html extractors dataStore
+        with _ -> None
+
+    member __.Data() = dataStore.ToArray()
+
+    member __.JsonData() =
         dataStore.ToArray()
         |> fun x -> JsonConvert.SerializeObject(x, Formatting.Indented)

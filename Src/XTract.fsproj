@@ -52,12 +52,13 @@
     <Compile Include="Regex.fs" />
     <Compile Include="String.fs" />
     <Compile Include="DataExtractor.fs" />
+    <Compile Include="Http.fs" />
     <Compile Include="Main.fs" />
     <None Include="Tests.fsx" />
     <Content Include="packages.config" />
     <Content Include="app.config" />
-    <None Include="logo.png" />
     <None Include="logo.svg" />
+    <None Include="logo.png" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="Fizzler">

@@ -6,6 +6,7 @@ open HtmlAgilityPack
 open Microsoft.FSharp.Reflection
 open Newtonsoft.Json
 open SpreadSharp
+open System
 open System.Collections.Generic
 open System.IO
 open System.Text.RegularExpressions
@@ -101,70 +102,114 @@ module private Utils =
         | true -> Url
 
     let scrape<'T> html extractors (dataStore:ConcurrentBag<'T>) =
-                let doc = HtmlDocument()
-                doc.LoadHtml html
-                let root = doc.DocumentNode
-                let dictionary = Dictionary<string, string>()
-                extractors
-                |> List.map (fun x -> 
-                       let selection = root.QuerySelector(x.selector)
-                       match selection with
-                       | null -> x, None
-                       | _ -> x, Some selection)
-                |> List.iter (fun (x, htmlNode) -> extract x htmlNode dictionary)
-                let record = 
-                    let arr = 
-                        dictionary.Values
-                        |> Seq.toArray
-                        |> Array.map box
-                    FSharpValue.MakeRecord(typeof<'T>, arr) :?> 'T
-                dataStore.Add record
-                Some record
+        let doc = HtmlDocument()
+        doc.LoadHtml html
+        let root = doc.DocumentNode
+        let dictionary = Dictionary<string, string>()
+        extractors
+        |> List.map (fun x -> 
+                let selection = root.QuerySelector(x.selector)
+                match selection with
+                | null -> x, None
+                | _ -> x, Some selection)
+        |> List.iter (fun (x, htmlNode) -> extract x htmlNode dictionary)
+        let record = 
+            let arr = 
+                dictionary.Values
+                |> Seq.toArray
+                |> Array.map box
+            FSharpValue.MakeRecord(typeof<'T>, arr) :?> 'T
+        dataStore.Add record
+        Some record
     
     let scrapeAll<'T> html extractors (dataStore:ConcurrentBag<'T>) =
-                let doc = HtmlDocument()
-                doc.LoadHtml html
-                let root = doc.DocumentNode
+        let doc = HtmlDocument()
+        doc.LoadHtml html
+        let root = doc.DocumentNode
         
-                let enums = 
-                    [ for x in extractors -> 
-                          let selection = root.QuerySelectorAll(x.selector)
-                          match selection with
-                          | null -> x, None
-                          | _ -> x, Some <| selection.GetEnumerator() ]
-                extractAll [] enums |> List.map (fun x -> 
-                                                 let record = 
-                                                     let arr = 
-                                                         x.Values
-                                                         |> Seq.toArray
-                                                         |> Array.map box
-                                                     FSharpValue.MakeRecord(typeof<'T>, arr) :?> 'T
-                                                 dataStore.Add record
-                                                 record) |> Some
+        let enums = 
+            [ for x in extractors -> 
+                    let selection = root.QuerySelectorAll(x.selector)
+                    match selection with
+                    | null -> x, None
+                    | _ -> x, Some <| selection.GetEnumerator() ]
+        extractAll [] enums |> List.map (fun x -> 
+                                            let record = 
+                                                let arr = 
+                                                    x.Values
+                                                    |> Seq.toArray
+                                                    |> Array.map box
+                                                FSharpValue.MakeRecord(typeof<'T>, arr) :?> 'T
+                                            dataStore.Add record
+                                            record) |> Some
 
 type Scraper<'T>(extractors) = 
     let dataStore = ConcurrentBag<'T>()
+    let log = ConcurrentQueue<string>()
+    let mutable loggingEnabled = true
+
+    let logger =
+        MailboxProcessor.Start(fun inbox ->
+            let rec loop() =
+                async {
+                    let! msg = inbox.Receive()
+                    let time = DateTime.Now.ToString()
+                    let msg' = time + " - " + msg
+                    log.Enqueue msg'
+                    match loggingEnabled with
+                    | false -> ()
+                    | true -> printfn "%s" msg'
+                    return! loop()
+                }
+            loop()
+        )
     
+    member __.Log msg = logger.Post msg
+
+    member __.LogData() = log.ToArray()
+
+    member __.WithLogging enabled = loggingEnabled <- enabled
+
     member __.Scrape input =
-        try
-            match input with
-            | Utils.Html -> Utils.scrape<'T> input extractors dataStore
-            | Utils.Url ->
-                let html = Http.get input
-                match html with
-                | None -> None
-                | Some html -> Utils.scrape<'T> html extractors dataStore
-        with _ -> None
+        match input with
+        | Utils.Html ->
+            let substring =
+                match input.Length with
+                | l when l < 50 -> input + "..."
+                | _ -> input.Substring(0, 50) + "..."
+            logger.Post <| "Scraping " + substring
+            Utils.scrape<'T> input extractors dataStore
+
+        | Utils.Url ->
+            logger.Post <| "Downloading " + input
+            let html = Http.get input
+            match html with
+            | None ->
+                logger.Post <| "Failed to get " + input
+                None
+            | Some html ->
+                logger.Post <| "Scraping " + input
+                Utils.scrape<'T> html extractors dataStore
 
     member __.ScrapeAll input = 
         try
             match input with
-            | Utils.Html -> Utils.scrapeAll<'T> input extractors dataStore
+            | Utils.Html ->
+                let substring =
+                    match input.Length with
+                    | l when l < 50 -> input + "..."
+                    | _ -> input.Substring(0, 50) + "..."
+                logger.Post <| "Scraping " + substring                
+                Utils.scrapeAll<'T> input extractors dataStore
             | Utils.Url ->
                 let html = Http.get input
                 match html with
-                | None -> None
-                | Some html -> Utils.scrapeAll<'T> html extractors dataStore
+                | None ->
+                    logger.Post <| "Failed to get " + input
+                    None
+                | Some html ->
+                    logger.Post <| "Scraping " + input                    
+                    Utils.scrapeAll<'T> html extractors dataStore
         with _ -> None
 
     member __.Data() = dataStore.ToArray()

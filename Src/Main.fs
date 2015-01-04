@@ -5,6 +5,8 @@ open Fizzler.Systems.HtmlAgilityPack
 open HtmlAgilityPack
 open Microsoft.FSharp.Reflection
 open Newtonsoft.Json
+open OpenQA.Selenium.Chrome
+open Settings
 open SpreadSharp
 open System
 open System.Collections.Generic
@@ -211,6 +213,81 @@ type Scraper<'T>(extractors) =
                     logger.Post <| "Scraping " + input                    
                     Utils.scrapeAll<'T> html extractors dataStore
         with _ -> None
+
+    member __.Data() = dataStore.ToArray()
+
+    member __.JsonData() =
+        dataStore.ToArray()
+        |> fun x -> JsonConvert.SerializeObject(x, Formatting.Indented)
+
+    member __.SaveCsv(path) =
+        let sw = File.CreateText(path)
+        let csv = new CsvWriter(sw)
+        csv.WriteRecords(dataStore)
+        sw.Flush()
+        sw.Dispose()
+
+    member __.SaveExcel(path) =
+        Records.saveAs dataStore typeof<'T> path
+
+type DynamicScraper<'T>(extractors) =
+    let driver = new ChromeDriver(XTractSettings.chromeDriverDirectory)
+    let dataStore = ConcurrentBag<'T>()
+    let log = ConcurrentQueue<string>()
+    let mutable loggingEnabled = true
+
+    let rec waitComplete() =
+        let state = driver.ExecuteScript("return document.readyState;").ToString()
+        match state with
+        | "complete" -> ()
+        | _ -> waitComplete()
+
+    let logger =
+        MailboxProcessor.Start(fun inbox ->
+            let rec loop() =
+                async {
+                    let! msg = inbox.Receive()
+                    let time = DateTime.Now.ToString()
+                    let msg' = time + " - " + msg
+                    log.Enqueue msg'
+                    match loggingEnabled with
+                    | false -> ()
+                    | true -> printfn "%s" msg'
+                    return! loop()
+                }
+            loop()
+        )
+    
+    member __.Get url =
+        driver.Url <- url
+        waitComplete()
+
+    member __.SendKeys cssSelector text =
+        let elem = driver.FindElementByCssSelector(cssSelector)
+        printfn "%A" elem.Displayed
+        elem.SendKeys(text)
+
+    member __.Click cssSelector =
+        driver.FindElementByCssSelector(cssSelector).Click()
+        waitComplete()
+
+    member __.Quit() = driver.Quit()
+
+    member __.Log msg = logger.Post msg
+
+    member __.LogData() = log.ToArray()
+
+    member __.WithLogging enabled = loggingEnabled <- enabled
+
+    member __.Scrape() =
+        logger.Post <| "Scraping ..."
+        let html = driver.PageSource
+        Utils.scrape<'T> html extractors dataStore        
+
+    member __.ScrapeAll() =
+        let html = driver.PageSource
+        logger.Post <| "Scraping ..."             
+        Utils.scrapeAll<'T> html extractors dataStore
 
     member __.Data() = dataStore.ToArray()
 

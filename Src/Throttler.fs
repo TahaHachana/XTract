@@ -5,11 +5,11 @@ open System.Collections.Generic
 
 type Message = Quit | Work
 
-let throttle asyncs limit callback =
+let throttle (asyncs:seq<Async<unit>>) limit callback =
  
-    let q = Queue()
+    let q = Queue(asyncs)
+    
     let dequeue() = try q.Dequeue() |> Some with _ -> None
-    asyncs |> Seq.iter (fun x -> q.Enqueue x)
     
     let agent =
         MailboxProcessor.Start(fun x ->

@@ -54,8 +54,11 @@
     <Compile Include="DataExtractor.fs" />
     <Compile Include="Throttler.fs" />
     <Compile Include="Http.fs" />
+    <Compile Include="Settings.fs" />
     <Compile Include="Main.fs" />
-    <None Include="Tests.fsx" />
+    <None Include="ScraperTests.fsx" />
+    <None Include="ThrottlingTests.fsx" />
+    <None Include="DynamicScraperTests.fsx" />
     <Content Include="packages.config" />
     <Content Include="app.config" />
     <None Include="logo.png" />
@@ -93,12 +96,17 @@
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Drawing" />
     <Reference Include="System.Net.Http">
       <HintPath>..\..\..\..\..\..\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.5\System.Net.Http.dll</HintPath>
     </Reference>
     <Reference Include="System.Numerics" />
     <Reference Include="System.Xml" />
     <Reference Include="System.Xml.Linq" />
+    <Reference Include="WebDriver">
+      <HintPath>packages\Selenium.WebDriver.2.44.0\lib\net40\WebDriver.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
   </ItemGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
 	     Other similar extension points exist, see Microsoft.Common.targets.

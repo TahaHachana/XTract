@@ -15,11 +15,13 @@ Usage
 -----
 
 ```fsharp
+#load "../packages/XTract.0.2.5/XTractBootstrap.fsx"
+
 open System
 open System.IO
 open XTract
 
-// Define some data extractors
+// Describe the data model with extractors
 let avatar =
     "div:nth-child(1).anchor > div:nth-child(2) > div.row.data-row > div.col-md-5 > div:nth-child(1).media > a:nth-child(1).media-left > img:nth-child(1).avatar.lazy"
     |> Extractor.New

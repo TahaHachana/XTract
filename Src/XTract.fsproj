@@ -63,6 +63,7 @@
     <Content Include="app.config" />
     <None Include="logo.png" />
     <None Include="logo.svg" />
+    <None Include="chromedriver.exe" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="CsvHelper">

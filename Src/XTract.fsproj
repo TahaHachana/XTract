@@ -58,7 +58,7 @@
     <Compile Include="Main.fs" />
     <None Include="ScraperTests.fsx" />
     <None Include="ThrottlingTests.fsx" />
-    <None Include="DynamicScraperTests.fsx" />
+    <None Include="FSharpOrgMembers.fsx" />
     <Content Include="packages.config" />
     <Content Include="app.config" />
     <None Include="logo.png" />

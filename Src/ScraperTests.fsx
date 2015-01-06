@@ -31,7 +31,6 @@ let screenName =
 let tweet =
     "div > div > div > div.media-body.twitter-media-body > p"
     |> Extractor.New
-    |> Extractor.WithAttributes ["text"]
 
 // Initialize a scraper
 let scraper = Scraper<Tweet> [avatar; screenName; tweet]

@@ -46,8 +46,8 @@ type Extractor =
                 attributes = attributes
         }
 
-module private Utils = 
-    let private emptyAttrs attrs (dictionary : Dictionary<string, string>) = 
+module Utils = 
+    let emptyAttrs attrs (dictionary : Dictionary<string, string>) = 
         attrs
         |> List.iter (fun x ->
             let key = string <| dictionary.Count + 1
@@ -56,7 +56,7 @@ module private Utils =
             | _ -> dictionary.Add(key + "-" + x, "")
         )
     
-    let private scrapeAttrs attrs extractor (htmlNode : HtmlNode) (dictionary : Dictionary<string, string>) = 
+    let scrapeAttrs attrs extractor (htmlNode : HtmlNode) (dictionary : Dictionary<string, string>) = 
         attrs
         |> List.iter (fun x -> 
             let key = dictionary.Count + 1 |> string
@@ -103,7 +103,7 @@ module private Utils =
             |> extractAll (acc @ acc')
 
     let urlRegex =
-        let pattern = "(ht|f)tp(s?)\:\/\/[0-9a-zA-Z]([-.\w]*[0-9a-zA-Z])*(:(0-9)*)*(\/?)([a-zA-Z0-9\-\.\?\,\'\/\\\+&amp;%\$#_]*)?"
+        let pattern = "^(ht|f)tp(s?)\:\/\/[0-9a-zA-Z]([-.\w]*[0-9a-zA-Z])*(:(0-9)*)*(\/?)([a-zA-Z0-9\-\.\?\,\'\/\\\+&amp;%\$#_]*)?"
         Regex(pattern)
 
     let (|Html|Url|) input =

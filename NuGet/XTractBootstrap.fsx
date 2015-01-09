@@ -6,7 +6,7 @@
 #r """../../packages/Newtonsoft.Json.6.0.7/lib/net45/Newtonsoft.Json.dll"""
 #r """../../packages/Selenium.WebDriver.2.44.0/lib/net40/WebDriver.dll"""
 #r """../../packages/SpreadSharp.0.2.79/lib/Net40/SpreadSharp.dll"""
-#r """../../packages/XTract.0.2.6/Lib/net45/XTract.dll"""
+#r """../../packages/XTract.0.2.7/Lib/net45/XTract.dll"""
 
 open System.IO
 open XTract.Settings

@@ -5,6 +5,46 @@ open System
 open System.IO
 open XTract
 
+let name =
+    "div:nth-child(5).anchor > div:nth-child(2) > div.row.data-row > div.col-md-5 > div:nth-child(1).media > div:nth-child(2).media-body > h4:nth-child(1).media-heading > a:nth-child(1)"
+    |> Extractor.New
+    |> Extractor.WithAttributes ["text"] //; "href"]
+
+let tags =
+    "div:nth-child(5).anchor > div:nth-child(2) > div.row.data-row > div.col-md-5 > div:nth-child(1).media > div:nth-child(2).media-body > div:nth-child(4) > span.label.label-info"
+    |> Extractor.New
+    |> Extractor.WithMany true
+    |> Extractor.WithAttributes ["text"] //; "class"]
+
+type Pkg =
+    {
+        details: string
+        tags: string list //Map<string, string> list
+    }
+
+let scraper = Scraper<Pkg>([name; tags])
+let test = scraper.ScrapeAll "http://fsharp-hub.apphb.com/"
+let test1 = scraper.Scrape "http://fsharp-hub.apphb.com/"
+
+//let html =
+//    Http.get "http://fsharp-hub.apphb.com/"
+//    |> Option.get
+//
+//#r @"C:\Users\AHMED\Documents\GitHub\XTract\Src\packages\Newtonsoft.Json.6.0.7\lib\net40\Newtonsoft.Json.dll"
+//
+//Newtonsoft.Json.JsonConvert.DeserializeObject(test, typeof<Pkg>)
+//
+//open System.Collections.Generic
+//
+//let d = Dictionary<string, obj>()
+//
+//d.Add("1", "Streams.CSharp 0.2.8")
+//d.Add("2", ["F#/C#";"Streams"])
+//open Microsoft.FSharp.Reflection
+//
+//let record = FSharpValue.MakeRecord(typeof<Pkg>, d.Values |> Seq.toArray)
+
+
 // Describe the data model.
 type Tweet =
     {
@@ -57,3 +97,5 @@ scraper.SaveCsv(path)
 // Save an Excel workbook
 let path' = Path.Combine(desktop, "data.xlsx")
 scraper.SaveExcel path'
+
+

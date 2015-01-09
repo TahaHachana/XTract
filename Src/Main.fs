@@ -25,6 +25,7 @@ type Extractor =
         selector : string
         pattern : string
         attributes : string list
+        many: bool
     }
     
     static member New selector = 
@@ -32,6 +33,7 @@ type Extractor =
             selector = selector
             pattern = "^()(.*?)()$"
             attributes = [ "text" ]
+            many = false
         }
     
     static member WithPattern pattern property =
@@ -46,61 +48,173 @@ type Extractor =
                 attributes = attributes
         }
 
-module Utils = 
-    let emptyAttrs attrs (dictionary : Dictionary<string, string>) = 
-        attrs
-        |> List.iter (fun x ->
-            let key = string <| dictionary.Count + 1
-            match x with
-            | "text" -> dictionary.Add(key + "-text", "")
-            | _ -> dictionary.Add(key + "-" + x, "")
+    static member WithMany many property =
+        {
+            property with
+                many = many
+        }
+
+module Scrapers =
+
+    // many false & single attr
+    let falseSingle (htmlNode:HtmlNode) extractor (dictionary:Dictionary<string, obj>) =
+        let value =
+            match extractor.attributes.Head with
+                | "text" ->
+                    let text =
+                        let ``match`` = Regex(extractor.pattern).Match(htmlNode.InnerText)
+                        match ``match``.Success with
+                        | false -> ""
+                        | true -> ``match``.Groups.[2].Value
+                    text 
+                | x -> htmlNode.GetAttributeValue(x, "")
+        let key = "key" + (string <| dictionary.Count + 1)     
+        dictionary.Add(key, value) 
+
+    // many false & multiple attrs
+    let falseMany (htmlNode:HtmlNode) extractor (dictionary:Dictionary<string, obj>) =
+        let map : Map<string, string> = Map.empty //  Dictionary<string, string>()
+        let value =
+            extractor.attributes
+            |> List.fold (fun (map:Map<string, string>) attr ->
+                let value =
+                    match attr with
+                        | "text" ->
+                            let text =
+                                let ``match`` = Regex(extractor.pattern).Match(htmlNode.InnerText)
+                                match ``match``.Success with
+                                | false -> ""
+                                | true -> ``match``.Groups.[2].Value
+                            text 
+                        | x -> htmlNode.GetAttributeValue(x, "")
+                map.Add(attr, value)
+            ) map
+        let key = "key" + (string <| dictionary.Count + 1)     
+        dictionary.Add(key, value)   
+
+    // many true & single attr
+    let trueSingle (nodes:HtmlNode list) extractor (dictionary:Dictionary<string, obj>) =
+        let lst =
+            nodes
+            |> List.map (fun htmlNode ->
+                match extractor.attributes.Head with
+                    | "text" ->
+                        let text =
+                            let ``match`` = Regex(extractor.pattern).Match(htmlNode.InnerText)
+                            match ``match``.Success with
+                            | false -> ""
+                            | true -> ``match``.Groups.[2].Value
+                        text 
+                    | x -> htmlNode.GetAttributeValue(x, "")
+            )
+        let key = "key" + (string <| dictionary.Count + 1)     
+        dictionary.Add(key, lst)
+
+    // many true & multiple attrs
+    let trueMany (nodes:HtmlNode list) extractor (dictionary:Dictionary<string, obj>) =
+        let lst =
+            nodes
+            |> List.map (fun htmlNode ->
+                let map : Map<string, string> = Map.empty
+                extractor.attributes
+                |> List.fold (fun (map:Map<string, string>) attr ->
+                    let value =
+                        match attr with
+                            | "text" ->
+                                let text =
+                                    let ``match`` = Regex(extractor.pattern).Match(htmlNode.InnerText)
+                                    match ``match``.Success with
+                                    | false -> ""
+                                    | true -> ``match``.Groups.[2].Value
+                                text 
+                            | x -> htmlNode.GetAttributeValue(x, "")
+                    map.Add(attr, value)
+                ) map)
+        let key = "key" + (string <| dictionary.Count + 1)     
+        dictionary.Add(key, lst)
+
+    type Selection = SingleNode of HtmlNode | NodesList of HtmlNode list
+
+    let scrapeSingle extractors (root:HtmlNode) =
+        let dictionary = Dictionary<string, obj>()
+
+        let enums = 
+            [
+                for x in extractors -> 
+                    let selection = root.QuerySelectorAll(x.selector)
+                    x, selection
+            ]
+        enums
+        |> List.map (fun (extractor, selection) ->
+            match extractor.many with
+            | false -> extractor, SingleNode (Seq.nth 0 selection)
+            | true ->
+                let nodes =
+                    selection
+                    |> Seq.groupBy (fun n -> n.ParentNode)
+                    |> Seq.nth 0
+                    |> snd
+                    |> Seq.toList
+                extractor, NodesList nodes
         )
-    
-    let scrapeAttrs attrs extractor (htmlNode : HtmlNode) (dictionary : Dictionary<string, string>) = 
-        attrs
-        |> List.iter (fun x -> 
-            let key = dictionary.Count + 1 |> string
-            match x with
-            | "text" -> 
-                let text = 
-                    let ``match`` = Regex(extractor.pattern).Match(htmlNode.InnerText)
-                    match ``match``.Success with
-                    | false -> ""
-                    | true -> ``match``.Groups.[2].Value
-                dictionary.Add(key + "-text", text)
-            | _ -> dictionary.Add(key + "-" + x, htmlNode.GetAttributeValue(x, "")))
-    
-    let extract extractor htmlNode dictionary = 
-        let attrs = extractor.attributes
-        match htmlNode with
-        | None -> emptyAttrs attrs dictionary
-        | Some htmlNode -> scrapeAttrs attrs extractor htmlNode dictionary
-    
-    let rec extractAll (acc : Dictionary<string, string> list) (enums : (Extractor * IEnumerator<HtmlNode> option) list) = 
-        let enums' = 
-            enums
-            |> List.map (fun (extrator, enumerator) -> 
-                match enumerator with
-                | None -> extrator, enumerator, None
-                | Some x -> 
-                    let htmlNode = 
-                        match x.MoveNext() with
-                        | false -> None
-                        | true -> Some x.Current
-                    extrator, enumerator, htmlNode)
-        enums'
-        |> List.exists (fun (_, _, htmlNode) -> htmlNode.IsSome)
-        |> function
-        | false -> acc
-        | true -> 
-            let acc' = 
-                [ let dictionary = Dictionary<string, string>()
-                  for (extractor, _, htmlNode) in enums' do
-                      extract extractor htmlNode dictionary
-                  yield dictionary ]
-            enums'
-            |> List.map (fun (extractor, enumerator, _) -> extractor, enumerator)
-            |> extractAll (acc @ acc')
+        |> List.iter (fun (extractor, selection) ->
+            match selection with
+            | SingleNode htmlNode ->
+                match extractor.attributes with
+                | [_] -> falseSingle htmlNode extractor dictionary
+                | _ -> falseMany htmlNode extractor dictionary
+            | NodesList nodes ->
+                match extractor.attributes with
+                | [_] -> trueSingle nodes extractor dictionary
+                | _ -> trueMany nodes extractor dictionary
+        )
+        dictionary
+
+    let scrape extractors (root:HtmlNode) =
+        let enums = 
+            [
+                for x in extractors -> 
+                    let selection = root.QuerySelectorAll(x.selector)
+                    let groups =
+                        match x.many with
+                        | false -> []
+                        | true ->
+                            selection
+                            |> Seq.groupBy (fun n -> n.ParentNode)
+                            |> Seq.map snd
+                            |> Seq.toList
+                    x, selection, groups
+            ]
+        let rec loop acc idx =
+            let dictionary = Dictionary<string, obj>()
+            try
+                enums
+                |> List.map (fun (extractor, selection, groups) ->
+                    match extractor.many with
+                    | false -> extractor, SingleNode (Seq.nth idx selection)
+                    | true ->
+                        let nodes =
+                            groups
+                            |> Seq.nth idx
+                            |> Seq.toList
+                        extractor, NodesList nodes
+                )
+                |> List.iter (fun (extractor, selection) ->
+                    match selection with
+                    | SingleNode htmlNode ->
+                        match extractor.attributes with
+                        | [_] -> falseSingle htmlNode extractor dictionary
+                        | _ -> falseMany htmlNode extractor dictionary
+                    | NodesList nodes ->
+                        match extractor.attributes with
+                        | [_] -> trueSingle nodes extractor dictionary
+                        | _ -> trueMany nodes extractor dictionary
+                )
+                loop (acc @ [dictionary]) (idx + 1)
+            with _ -> acc
+        loop [] 0
+
+module Utils = 
 
     let urlRegex =
         let pattern = "^(ht|f)tp(s?)\:\/\/[0-9a-zA-Z]([-.\w]*[0-9a-zA-Z])*(:(0-9)*)*(\/?)([a-zA-Z0-9\-\.\?\,\'\/\\\+&amp;%\$#_]*)?"
@@ -116,39 +230,24 @@ module Utils =
         document.LoadHtml html
         document.DocumentNode
 
-    let makeRecord<'T> (dictionary : Dictionary<string, string>) =
+    let makeRecord<'T> (dictionary : Dictionary<string, obj>) =
         let values =
             dictionary.Values
             |> Seq.toArray
-            |> Array.map box
         FSharpValue.MakeRecord(typeof<'T>, values) :?> 'T
 
     let scrape<'T> html extractors (dataStore:ConcurrentBag<'T>) =
         let root = htmlRoot html
-        let dictionary = Dictionary<string, string>()
-        extractors
-        |> List.map (fun x -> 
-                let selection = root.QuerySelector(x.selector)
-                match selection with
-                | null -> x, None
-                | _ -> x, Some selection)
-        |> List.iter (fun (x, htmlNode) -> extract x htmlNode dictionary)
-        let record = makeRecord<'T> dictionary
+        let record =
+            Scrapers.scrapeSingle extractors root
+            |> makeRecord<'T>
         dataStore.Add record
         Some record
-    
+
     let scrapeAll<'T> html extractors (dataStore:ConcurrentBag<'T>) =
         let root = htmlRoot html
-        let enums = 
-            [
-                for x in extractors -> 
-                    let selection = root.QuerySelectorAll(x.selector)
-                    match selection with
-                    | null -> x, None
-                    | _ -> x, Some <| selection.GetEnumerator()
-            ]
-        extractAll [] enums
-        |> List.map (fun x -> 
+        Scrapers.scrape extractors root
+        |> List.map (fun x ->
             let record = makeRecord<'T> x
             dataStore.Add record
             record)

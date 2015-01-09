@@ -14,12 +14,15 @@ let tags =
     "div:nth-child(5).anchor > div:nth-child(2) > div.row.data-row > div.col-md-5 > div:nth-child(1).media > div:nth-child(2).media-body > div:nth-child(4) > span.label.label-info"
     |> Extractor.New
     |> Extractor.WithMany true
-    |> Extractor.WithAttributes ["text"] //; "class"]
+    |> Extractor.WithAttributes ["text"]
+
+let extractors = [name; tags]
+let code = CodeGen.recordCode extractors
 
 type Pkg =
     {
         details: string
-        tags: string list //Map<string, string> list
+        tags: string list
     }
 
 let scraper = Scraper<Pkg>([name; tags])
@@ -45,14 +48,6 @@ let test1 = scraper.Scrape "http://fsharp-hub.apphb.com/"
 //let record = FSharpValue.MakeRecord(typeof<Pkg>, d.Values |> Seq.toArray)
 
 
-// Describe the data model.
-type Tweet =
-    {
-        avatar: string
-        screenName: string
-        account: string
-        tweet: string
-    }
 
 // Define the data extractors.
 // avatar field
@@ -72,8 +67,21 @@ let tweet =
     "div > div > div > div.media-body.twitter-media-body > p"
     |> Extractor.New
 
+let extractors = [avatar; screenName; tweet]
+
+// Get some help to generate the record code that matches the extractors
+let code = CodeGen.recordCode extractors
+
+// Describe the data model.
+type Tweet =
+    {
+        avatar: string
+        screenName: Map<string, string>
+        tweet: string
+    }
+
 // Initialize a scraper
-let scraper = Scraper<Tweet> [avatar; screenName; tweet]
+let scraper = Scraper<Tweet> extractors
 
 let url = "http://fsharp-hub.apphb.com/"
 

@@ -2,14 +2,14 @@
 <package >
   <metadata>
     <id>XTract</id>
-    <version>0.2.7</version>
+    <version>0.3.0-RC1</version>
     <authors>Taha Hachana</authors>
     <owners>Taha Hachana</owners>
     <projectUrl>https://github.com/TahaHachana/XTract</projectUrl>
     <iconUrl>https://raw.githubusercontent.com/TahaHachana/XTract/master/Src/logo.png</iconUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>F# screen scraping package.</description>
-    <releaseNotes>Regex and string helpers module.</releaseNotes>
+    <releaseNotes>Support scraping multiple items per extractor (the tags of a forum question for example).</releaseNotes>
     <tags>F# SCREEN SCRAPING SCRAPE HTML DATA MINING</tags>
     <dependencies>
       <dependency id="Fizzler" version="1.0.0" />

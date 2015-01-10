@@ -5,6 +5,10 @@ open System
 open System.IO
 open XTract
 
+open System
+open System.IO
+open System.Net
+ 
 let name =
     "div:nth-child(5).anchor > div:nth-child(2) > div.row.data-row > div.col-md-5 > div:nth-child(1).media > div:nth-child(2).media-body > h4:nth-child(1).media-heading > a:nth-child(1)"
     |> Extractor.New
@@ -14,7 +18,7 @@ let tags =
     "div:nth-child(5).anchor > div:nth-child(2) > div.row.data-row > div.col-md-5 > div:nth-child(1).media > div:nth-child(2).media-body > div:nth-child(4) > span.label.label-info"
     |> Extractor.New
     |> Extractor.WithMany true
-    |> Extractor.WithAttributes ["text"]
+    |> Extractor.WithAttributes ["text"; "class"]
 
 let extractors = [name; tags]
 let code = CodeGen.recordCode extractors
@@ -22,11 +26,12 @@ let code = CodeGen.recordCode extractors
 type Pkg =
     {
         details: string
-        tags: string list
+        tags: Map<string, string> list
     }
 
 let scraper = Scraper<Pkg>([name; tags])
 let test = scraper.ScrapeAll "http://fsharp-hub.apphb.com/"
+
 let test1 = scraper.Scrape "http://fsharp-hub.apphb.com/"
 
 //let html =

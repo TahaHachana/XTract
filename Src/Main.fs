@@ -22,9 +22,9 @@ open System.Text.RegularExpressions
 /// attributes: the HTML attributes to scrape from the selected element ("text" is the default).
 type Extractor = 
     {
-        selector : string
-        pattern : string
-        attributes : string list
+        selector: string
+        pattern: string
+        attributes: string list
         many: bool
     }
     
@@ -101,7 +101,7 @@ module Scrapers =
 
     // many false & multiple attrs
     let falseMany (htmlNode:HtmlNode) extractor (dictionary:Dictionary<string, obj>) =
-        let map : Map<string, string> = Map.empty //  Dictionary<string, string>()
+        let map : Map<string, string> = Map.empty
         let value =
             extractor.attributes
             |> List.fold (fun (map:Map<string, string>) attr ->
@@ -163,84 +163,93 @@ module Scrapers =
 
     type Selection = SingleNode of HtmlNode | NodesList of HtmlNode list
 
+    let scrape selection extractor dictionary =
+        match selection with
+        | SingleNode htmlNode ->
+            match extractor.attributes with
+            | [_] -> falseSingle htmlNode extractor dictionary
+            | _ -> falseMany htmlNode extractor dictionary
+        | NodesList nodes ->
+            match extractor.attributes with
+            | [_] -> trueSingle nodes extractor dictionary
+            | _ -> trueMany nodes extractor dictionary
+
+    let selection (root:HtmlNode) extractor =
+        let selection = root.QuerySelectorAll(extractor.selector)
+        let groups =
+            match extractor.many with
+            | false -> []
+            | true ->
+                selection
+                |> Seq.groupBy (fun n -> n.ParentNode)
+                |> Seq.map snd
+                |> Seq.toList
+        extractor, selection, groups
+
+    let selection' (extractor, selection, groups) idx =
+        match extractor.many with
+        | false -> extractor, SingleNode (Seq.nth idx selection)
+        | true ->
+            let nodes =
+                groups
+                |> Seq.nth idx
+                |> Seq.toList
+            extractor, NodesList nodes
+
+
     let scrapeSingle extractors (root:HtmlNode) =
         let dictionary = Dictionary<string, obj>()
+        extractors
+        |> List.map (fun x -> selection root x)
+//        |> List.head
 
-        let enums = 
-            [
-                for x in extractors -> 
-                    let selection = root.QuerySelectorAll(x.selector)
-                    x, selection
-            ]
-        enums
-        |> List.map (fun (extractor, selection) ->
-            match extractor.many with
-            | false -> extractor, SingleNode (Seq.nth 0 selection)
-            | true ->
-                let nodes =
-                    selection
-                    |> Seq.groupBy (fun n -> n.ParentNode)
-                    |> Seq.nth 0
-                    |> snd
-                    |> Seq.toList
-                extractor, NodesList nodes
-        )
+//        [
+//            for x in extractors -> 
+//                x, root.QuerySelectorAll(x.selector)
+//        ]
+        |> List.mapi (fun idx x -> selection' x idx)
+//        
+//        (fun (extractor, selection, groups) ->
+//            match extractor.many with
+//            | false -> extractor, SingleNode (Seq.nth 0 selection)
+//            | true ->
+//                let nodes =
+//                    groups
+//                    |> Seq.nth 0
+//                    |> Seq.toList
+//                extractor, NodesList nodes
+//        )
         |> List.iter (fun (extractor, selection) ->
-            match selection with
-            | SingleNode htmlNode ->
-                match extractor.attributes with
-                | [_] -> falseSingle htmlNode extractor dictionary
-                | _ -> falseMany htmlNode extractor dictionary
-            | NodesList nodes ->
-                match extractor.attributes with
-                | [_] -> trueSingle nodes extractor dictionary
-                | _ -> trueMany nodes extractor dictionary
+            scrape selection extractor dictionary
         )
         dictionary
-
-    let scrape extractors (root:HtmlNode) =
-        let enums = 
-            [
-                for x in extractors -> 
-                    let selection = root.QuerySelectorAll(x.selector)
-                    let groups =
-                        match x.many with
-                        | false -> []
-                        | true ->
-                            selection
-                            |> Seq.groupBy (fun n -> n.ParentNode)
-                            |> Seq.map snd
-                            |> Seq.toList
-                    x, selection, groups
-            ]
-        let rec loop acc idx =
-            let dictionary = Dictionary<string, obj>()
+    
+    let selections enums =
+        let rec f acc idx =
             try
-                enums
-                |> List.map (fun (extractor, selection, groups) ->
-                    match extractor.many with
-                    | false -> extractor, SingleNode (Seq.nth idx selection)
-                    | true ->
-                        let nodes =
-                            groups
-                            |> Seq.nth idx
-                            |> Seq.toList
-                        extractor, NodesList nodes
-                )
-                |> List.iter (fun (extractor, selection) ->
-                    match selection with
-                    | SingleNode htmlNode ->
-                        match extractor.attributes with
-                        | [_] -> falseSingle htmlNode extractor dictionary
-                        | _ -> falseMany htmlNode extractor dictionary
-                    | NodesList nodes ->
-                        match extractor.attributes with
-                        | [_] -> trueSingle nodes extractor dictionary
-                        | _ -> trueMany nodes extractor dictionary
-                )
-                loop (acc @ [dictionary]) (idx + 1)
+                let lst =
+                    enums
+                    |> List.map (fun x -> selection' x idx)
+                f (acc @ [lst]) (idx + 1)
             with _ -> acc
-        loop [] 0
+        f [] 0
+
+    let scrapeSelections enums =
+        enums
+        |> selections
+        |> List.fold (fun state lst ->
+            let dictionary = Dictionary<string, obj>()
+            lst
+            |> List.iter (fun (extractor, selection) ->
+                scrape selection extractor dictionary
+            )
+            state @ [dictionary]
+        ) []
+
+    let scrapeAll extractors (root:HtmlNode) =
+        extractors
+        |> List.map (fun x -> selection root x)
+        |> scrapeSelections
 
 module Utils = 
 
@@ -274,12 +283,25 @@ module Utils =
 
     let scrapeAll<'T> html extractors (dataStore:ConcurrentBag<'T>) =
         let root = htmlRoot html
-        Scrapers.scrape extractors root
+        Scrapers.scrapeAll extractors root
         |> List.map (fun x ->
             let record = makeRecord<'T> x
             dataStore.Add record
             record)
         |> Some
+
+    let fields record =
+        FSharpValue.GetRecordFields record
+        |> Array.map (fun x ->
+            match x with
+            | :? (string list) as lst -> lst.ToString()
+            | :? Map<string, string> as map ->  string <| Map.toList map
+            | :? (Map<string, string> list) as lst ->
+                lst
+                |> List.map Map.toList
+                |> string
+            | _ -> string x
+        )
 
 type Scraper<'T>(extractors) = 
     let dataStore = ConcurrentBag<'T>()
@@ -343,6 +365,7 @@ type Scraper<'T>(extractors) =
             logger.Post <| "Scraping data from " + substring                
             Utils.scrapeAll<'T> input extractors dataStore
         | Utils.Url ->
+            logger.Post <| "Downloading " + input
             let html = Http.get input
             match html with
             | None ->
@@ -362,9 +385,20 @@ type Scraper<'T>(extractors) =
 
     /// Saves the data stored by the scraper in a CSV file.
     member __.SaveCsv(path) =
+        let headers =
+            FSharpType.GetRecordFields typeof<'T>
+            |> Array.map (fun x -> x.Name)
         let sw = File.CreateText(path)
         let csv = new CsvWriter(sw)
-        csv.WriteRecords(dataStore)
+        headers
+        |> Array.iter (fun x -> csv.WriteField x)
+        csv.NextRecord()
+        dataStore
+        |> Seq.iter (fun x ->
+            Utils.fields x
+            |> Array.iter (fun x -> csv.WriteField x)
+            csv.NextRecord()            
+        )
         sw.Flush()
         sw.Dispose()
 

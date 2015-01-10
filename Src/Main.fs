@@ -1,6 +1,7 @@
 ﻿namespace XTract
 
 open CsvHelper
+open Deedle
 open Fizzler.Systems.HtmlAgilityPack
 open HtmlAgilityPack
 open Microsoft.FSharp.Reflection
@@ -8,12 +9,16 @@ open Newtonsoft.Json
 open OpenQA.Selenium.Chrome
 open Settings
 open SpreadSharp
+open SpreadSharp.Collections
 open System
 open System.Collections.Concurrent
 open System.Collections.Generic
 open System.IO
 open System.Text.RegularExpressions
 
+type ExtractorType = Css | Xpath
+
+//type 
 /// A type for describing a property to scrape.
 /// Fields:
 /// selector: CSS selector,
@@ -26,6 +31,7 @@ type Extractor =
         pattern: string
         attributes: string list
         many: bool
+        exType: ExtractorType
     }
     
     static member New selector = 
@@ -34,6 +40,7 @@ type Extractor =
             pattern = "^()(.*?)()$"
             attributes = [ "text" ]
             many = false
+            exType = Css
         }
     
     static member WithPattern pattern property =
@@ -53,6 +60,34 @@ type Extractor =
             property with
                 many = many
         }
+
+    static member WithType exType property =
+        {
+            property with
+                exType = exType
+        }
+
+//module Test =
+//    let html = ""
+//
+//    let doc = HtmlDocument()
+//    doc.LoadHtml html
+//    let root = doc.DocumentNode
+//    let xpath = """//*[@id="root"]/div[3]/div[2]/div/div[2]/div/div[2]/div[1]/div/div[2]/div/div[1]/div/div[2]/div/div[3]/div/div[2]/div/span/a"""
+//    let node = root.SelectSingleNode xpath
+//    let nodes = root.SelectNodes xpath |> Seq.length
+//
+//    let name =
+//        "div > div > div > h1 > span"
+//        |> Extractor.New
+//
+//    let location =
+//    //    "span[itemprop=locality]"
+//        """//*[@id="root"]/div[3]/div[2]/div/div[2]/div/div[2]/div[1]/div/div[2]/div/div[1]/div/div[2]/div/div[3]/div/div[2]/div/span/a"""
+//        |> Extractor.New
+//        |> Extractor.WithType Xpath
+//
+//    let extractors = [name; location]
 
 module CodeGen =
 
@@ -80,7 +115,6 @@ module CodeGen =
                 "    }"
             ]
         |> String.concat "\n"
-
 
 module Scrapers =
 
@@ -175,7 +209,10 @@ module Scrapers =
             | _ -> trueMany nodes extractor dictionary
 
     let selection (root:HtmlNode) extractor =
-        let selection = root.QuerySelectorAll(extractor.selector)
+        let selection =
+            match extractor.exType with
+            | Css -> root.QuerySelectorAll(extractor.selector)
+            | Xpath -> root.SelectNodes(extractor.selector) |> Seq.cast<HtmlNode>
         let groups =
             match extractor.many with
             | false -> []
@@ -196,7 +233,6 @@ module Scrapers =
                 |> Seq.toList
             extractor, NodesList nodes
 
-
     let scrapeSingle extractors (root:HtmlNode) =
         let dictionary = Dictionary<string, obj>()
         extractors
@@ -207,7 +243,7 @@ module Scrapers =
 //            for x in extractors -> 
 //                x, root.QuerySelectorAll(x.selector)
 //        ]
-        |> List.mapi (fun idx x -> selection' x idx)
+        |> List.map (fun x -> selection' x 0) //idx)
 //        
 //        (fun (extractor, selection, groups) ->
 //            match extractor.many with
@@ -328,7 +364,7 @@ type Scraper<'T>(extractors) =
     member __.Log msg = logger.Post msg
 
     /// Returns the scraper's log.
-    member __.LogData() = log.ToArray()
+    member __.LogData = log.ToArray()
 
     /// Enables or disables printing log messages.
     member __.WithLogging enabled = loggingEnabled <- enabled
@@ -376,12 +412,14 @@ type Scraper<'T>(extractors) =
                 Utils.scrapeAll<'T> html extractors dataStore
 
     /// Returns the data stored so far by the scraper.
-    member __.Data() = dataStore.ToArray()
+    member __.Data = dataStore.ToArray()
 
     /// Returns the data stored so far by the scraper in JSON format.
-    member __.JsonData() =
-        dataStore.ToArray()
-        |> fun x -> JsonConvert.SerializeObject(x, Formatting.Indented)
+    member __.JsonData =
+        JsonConvert.SerializeObject(dataStore, Formatting.Indented)
+
+    /// Returns the data stored so far by the scraper as a Deedle data frame.
+    member __.DataFrame = Frame.ofRecords dataStore
 
     /// Saves the data stored by the scraper in a CSV file.
     member __.SaveCsv(path) =
@@ -404,7 +442,25 @@ type Scraper<'T>(extractors) =
 
     /// Saves the data stored by the scraper in an Excel file.
     member __.SaveExcel(path) =
-        Records.saveAs dataStore typeof<'T> path
+        let xl = XlApp.startHidden()
+        let workbook = XlWorkbook.add xl
+        let worksheet = XlWorksheet.byIndex workbook 1
+        let headers =
+            FSharpType.GetRecordFields typeof<'T>
+            |> Array.map (fun x -> x.Name)
+        let columnsCount = Array.length headers
+        let rangeString = String.concat "" ["A1:"; string (char (columnsCount + 64)) + "1"]
+        let rng = XlRange.get worksheet rangeString
+        Array.toRange rng headers
+        dataStore
+        |> Seq.iteri (fun idx x ->
+            let idxString = string <| idx + 2
+            let rangeString = String.concat "" ["A"; idxString; ":"; string (char (columnsCount + 64)); idxString]
+            let rng = XlRange.get worksheet rangeString
+            Array.toRange rng (Utils.fields x)
+        )
+        XlWorkbook.saveAs workbook path
+        XlApp.quit xl
 
 type DynamicScraper<'T>(extractors) =
     let driver = new ChromeDriver(XTractSettings.chromeDriverDirectory)
@@ -457,7 +513,7 @@ type DynamicScraper<'T>(extractors) =
     member __.Log msg = logger.Post msg
 
     /// Returns the scraper's log.
-    member __.LogData() = log.ToArray()
+    member __.LogData = log.ToArray()
 
     /// Enables or disables printing log messages.
     member __.WithLogging enabled = loggingEnabled <- enabled
@@ -475,21 +531,52 @@ type DynamicScraper<'T>(extractors) =
         Utils.scrapeAll<'T> html extractors dataStore
 
     /// Returns the data stored so far by the scraper.
-    member __.Data() = dataStore.ToArray()
+    member __.Data = dataStore.ToArray()
 
     /// Returns the data stored so far by the scraper in JSON format.
-    member __.JsonData() =
-        dataStore.ToArray()
-        |> fun x -> JsonConvert.SerializeObject(x, Formatting.Indented)
+    member __.JsonData =
+        JsonConvert.SerializeObject(dataStore, Formatting.Indented)
+
+    /// Returns the data stored so far by the scraper as a Deedle data frame.
+    member __.DataFrame = Frame.ofRecords dataStore
 
     /// Saves the data stored by the scraper in a CSV file.
     member __.SaveCsv(path) =
+        let headers =
+            FSharpType.GetRecordFields typeof<'T>
+            |> Array.map (fun x -> x.Name)
         let sw = File.CreateText(path)
         let csv = new CsvWriter(sw)
-        csv.WriteRecords(dataStore)
+        headers
+        |> Array.iter (fun x -> csv.WriteField x)
+        csv.NextRecord()
+        dataStore
+        |> Seq.iter (fun x ->
+            Utils.fields x
+            |> Array.iter (fun x -> csv.WriteField x)
+            csv.NextRecord()            
+        )
         sw.Flush()
         sw.Dispose()
 
     /// Saves the data stored by the scraper in an Excel file.
     member __.SaveExcel(path) =
-        Records.saveAs dataStore typeof<'T> path
+        let xl = XlApp.startHidden()
+        let workbook = XlWorkbook.add xl
+        let worksheet = XlWorksheet.byIndex workbook 1
+        let headers =
+            FSharpType.GetRecordFields typeof<'T>
+            |> Array.map (fun x -> x.Name)
+        let columnsCount = Array.length headers
+        let rangeString = String.concat "" ["A1:"; string (char (columnsCount + 64)) + "1"]
+        let rng = XlRange.get worksheet rangeString
+        Array.toRange rng headers
+        dataStore
+        |> Seq.iteri (fun idx x ->
+            let idxString = string <| idx + 2
+            let rangeString = String.concat "" ["A"; idxString; ":"; string (char (columnsCount + 64)); idxString]
+            let rng = XlRange.get worksheet rangeString
+            Array.toRange rng (Utils.fields x)
+        )
+        XlWorkbook.saveAs workbook path
+        XlApp.quit xl

@@ -14,9 +14,10 @@ open System
 open System.Collections.Concurrent
 open System.Collections.Generic
 open System.IO
+open System.Net
 open System.Text.RegularExpressions
 
-type ExtractorType = Css | Xpath
+type Selector = Css of string | Xpath of string
 
 //type 
 /// A type for describing a property to scrape.
@@ -27,11 +28,10 @@ type ExtractorType = Css | Xpath
 /// attributes: the HTML attributes to scrape from the selected element ("text" is the default).
 type Extractor = 
     {
-        selector: string
+        selector: Selector
         pattern: string
         attributes: string list
         many: bool
-        exType: ExtractorType
     }
     
     static member New selector = 
@@ -40,7 +40,6 @@ type Extractor =
             pattern = "^()(.*?)()$"
             attributes = [ "text" ]
             many = false
-            exType = Css
         }
     
     static member WithPattern pattern property =
@@ -61,19 +60,13 @@ type Extractor =
                 many = many
         }
 
-    static member WithType exType property =
-        {
-            property with
-                exType = exType
-        }
-
 //module Test =
 //    let html = ""
 //
 //    let doc = HtmlDocument()
 //    doc.LoadHtml html
 //    let root = doc.DocumentNode
-//    let xpath = """//*[@id="root"]/div[3]/div[2]/div/div[2]/div/div[2]/div[1]/div/div[2]/div/div[1]/div/div[2]/div/div[3]/div/div[2]/div/span/a"""
+//    let xpath = """"""
 //    let node = root.SelectSingleNode xpath
 //    let nodes = root.SelectNodes xpath |> Seq.length
 //
@@ -87,7 +80,10 @@ type Extractor =
 //        |> Extractor.New
 //        |> Extractor.WithType Xpath
 //
-//    let extractors = [name; location]
+//    let extractor =
+//        ".fontello-linkedin"
+//        |> Extractor.New
+//    let extractors = [name; extractor]
 
 module CodeGen =
 
@@ -130,8 +126,23 @@ module Scrapers =
                         | true -> ``match``.Groups.[2].Value
                     text 
                 | x -> htmlNode.GetAttributeValue(x, "")
+            |> WebUtility.HtmlDecode
         let key = "key" + (string <| dictionary.Count + 1)     
         dictionary.Add(key, value) 
+
+    let falseSingleEmpty extractor (dictionary:Dictionary<string, obj>) =
+//        let value =
+//            match extractor.attributes.Head with
+//                | "text" ->
+//                    let text =
+//                        let ``match`` = Regex(extractor.pattern).Match(htmlNode.InnerText)
+//                        match ``match``.Success with
+//                        | false -> ""
+//                        | true -> ``match``.Groups.[2].Value
+//                    text 
+//                | x -> htmlNode.GetAttributeValue(x, "")
+        let key = "key" + (string <| dictionary.Count + 1)     
+        dictionary.Add(key, "") 
 
     // many false & multiple attrs
     let falseMany (htmlNode:HtmlNode) extractor (dictionary:Dictionary<string, obj>) =
@@ -149,7 +160,28 @@ module Scrapers =
                                 | true -> ``match``.Groups.[2].Value
                             text 
                         | x -> htmlNode.GetAttributeValue(x, "")
+                    |> WebUtility.HtmlDecode
                 map.Add(attr, value)
+            ) map
+        let key = "key" + (string <| dictionary.Count + 1)     
+        dictionary.Add(key, value)   
+
+    let falseManyEmpty extractor (dictionary:Dictionary<string, obj>) =
+        let map : Map<string, string> = Map.empty
+        let value =
+            extractor.attributes
+            |> List.fold (fun (map:Map<string, string>) attr ->
+//                let value =
+//                    match attr with
+//                        | "text" ->
+//                            let text =
+//                                let ``match`` = Regex(extractor.pattern).Match(htmlNode.InnerText)
+//                                match ``match``.Success with
+//                                | false -> ""
+//                                | true -> ``match``.Groups.[2].Value
+//                            text 
+//                        | x -> htmlNode.GetAttributeValue(x, "")
+                map.Add(attr, "")
             ) map
         let key = "key" + (string <| dictionary.Count + 1)     
         dictionary.Add(key, value)   
@@ -168,9 +200,27 @@ module Scrapers =
                             | true -> ``match``.Groups.[2].Value
                         text 
                     | x -> htmlNode.GetAttributeValue(x, "")
+                |> WebUtility.HtmlDecode
             )
         let key = "key" + (string <| dictionary.Count + 1)     
         dictionary.Add(key, lst)
+
+    let trueSingleEmpty extractor (dictionary:Dictionary<string, obj>) =
+//        let lst =
+//            nodes
+//            |> List.map (fun htmlNode ->
+//                match extractor.attributes.Head with
+//                    | "text" ->
+//                        let text =
+//                            let ``match`` = Regex(extractor.pattern).Match(htmlNode.InnerText)
+//                            match ``match``.Success with
+//                            | false -> ""
+//                            | true -> ``match``.Groups.[2].Value
+//                        text 
+//                    | x -> htmlNode.GetAttributeValue(x, "")
+//            )
+        let key = "key" + (string <| dictionary.Count + 1)     
+        dictionary.Add(key, [])
 
     // many true & multiple attrs
     let trueMany (nodes:HtmlNode list) extractor (dictionary:Dictionary<string, obj>) =
@@ -190,12 +240,35 @@ module Scrapers =
                                     | true -> ``match``.Groups.[2].Value
                                 text 
                             | x -> htmlNode.GetAttributeValue(x, "")
+                        |> WebUtility.HtmlDecode
                     map.Add(attr, value)
                 ) map)
         let key = "key" + (string <| dictionary.Count + 1)     
         dictionary.Add(key, lst)
 
-    type Selection = SingleNode of HtmlNode | NodesList of HtmlNode list
+    let trueManyEmpty extractor (dictionary:Dictionary<string, obj>) =
+//        let lst =
+//            nodes
+//            |> List.map (fun htmlNode ->
+//                let map : Map<string, string> = Map.empty
+//                extractor.attributes
+//                |> List.fold (fun (map:Map<string, string>) attr ->
+//                    let value =
+//                        match attr with
+//                            | "text" ->
+//                                let text =
+//                                    let ``match`` = Regex(extractor.pattern).Match(htmlNode.InnerText)
+//                                    match ``match``.Success with
+//                                    | false -> ""
+//                                    | true -> ``match``.Groups.[2].Value
+//                                text 
+//                            | x -> htmlNode.GetAttributeValue(x, "")
+//                    map.Add(attr, "")
+//                ) map)
+        let key = "key" + (string <| dictionary.Count + 1)     
+        dictionary.Add(key, [])
+
+    type Selection = SingleNode of HtmlNode | NodesList of HtmlNode list | SelectionFailed
 
     let scrape selection extractor dictionary =
         match selection with
@@ -207,31 +280,72 @@ module Scrapers =
             match extractor.attributes with
             | [_] -> trueSingle nodes extractor dictionary
             | _ -> trueMany nodes extractor dictionary
+        | SelectionFailed ->
+            match extractor.many with
+            | false ->
+                match extractor.attributes with
+                | [_] -> falseSingleEmpty extractor dictionary
+                | _ -> falseManyEmpty extractor dictionary
+            | true ->
+                match extractor.attributes with
+                | [_] -> trueSingleEmpty extractor dictionary
+                | _ -> trueManyEmpty extractor dictionary
+            
 
     let selection (root:HtmlNode) extractor =
         let selection =
-            match extractor.exType with
-            | Css -> root.QuerySelectorAll(extractor.selector)
-            | Xpath -> root.SelectNodes(extractor.selector) |> Seq.cast<HtmlNode>
+            match extractor.selector with
+            | Css x ->
+                root.QuerySelectorAll x
+                |> function
+                | null -> None
+                | enum -> match Seq.isEmpty enum with false -> Some enum | true -> None            
+            | Xpath x ->
+                root.SelectNodes x
+                |> function
+                | null -> None
+                | enums ->
+                    let enumsSeq = Seq.cast<HtmlNode> enums
+                    match Seq.isEmpty enumsSeq with false -> Some enumsSeq | true -> None
+//            | x -> Some x
         let groups =
             match extractor.many with
             | false -> []
             | true ->
-                selection
-                |> Seq.groupBy (fun n -> n.ParentNode)
-                |> Seq.map snd
-                |> Seq.toList
+                match selection with
+                | None -> []
+                | Some x ->
+                    x
+                    |> Seq.groupBy (fun n -> n.ParentNode)
+                    |> Seq.map snd
+                    |> Seq.toList
         extractor, selection, groups
 
     let selection' (extractor, selection, groups) idx =
+        // todo: rewrite match
         match extractor.many with
-        | false -> extractor, SingleNode (Seq.nth idx selection)
+        | false ->
+            match selection with
+            | None -> extractor, SelectionFailed
+            | Some nodes ->
+                try
+                    extractor, SingleNode (Seq.nth idx nodes)
+                with _ -> extractor, SelectionFailed
         | true ->
-            let nodes =
-                groups
-                |> Seq.nth idx
-                |> Seq.toList
-            extractor, NodesList nodes
+            match selection with
+            | None -> extractor, SelectionFailed
+            | _ ->
+                
+                let nodes =
+                    try
+                        groups
+                        |> Seq.nth idx
+                        |> Seq.toList
+                    with _ -> []
+//                extractor, NodesList nodes
+                match nodes with
+                | [] -> extractor, SelectionFailed
+                | _ -> extractor, NodesList nodes
 
     let scrapeSingle extractors (root:HtmlNode) =
         let dictionary = Dictionary<string, obj>()
@@ -287,6 +401,8 @@ module Scrapers =
         |> List.map (fun x -> selection root x)
         |> scrapeSelections
 
+type Source = Html | Url of string
+
 module Utils = 
 
     let urlRegex =
@@ -309,24 +425,28 @@ module Utils =
             |> Seq.toArray
         FSharpValue.MakeRecord(typeof<'T>, values) :?> 'T
 
-    let scrape<'T> html extractors (dataStore:ConcurrentBag<'T>) =
+    let scrape<'T> html extractors =
         let root = htmlRoot html
         let record =
             Scrapers.scrapeSingle extractors root
             |> makeRecord<'T>
-        dataStore.Add record
+//        dataStore.Add record
         Some record
 
-    let scrapeAll<'T> html extractors (dataStore:ConcurrentBag<'T>) =
+    let scrapeAll<'T> html extractors = //(dataStore:ConcurrentBag<'T>) =
         let root = htmlRoot html
         Scrapers.scrapeAll extractors root
         |> List.map (fun x ->
             let record = makeRecord<'T> x
-            dataStore.Add record
+//            dataStore.Add record
             record)
         |> Some
 
-    let fields record =
+    let fields (source, record) =
+        let source' =
+            match source with
+            | Source.Html -> [|"HTML Code"|]
+            | Source.Url x -> [|x|]
         FSharpValue.GetRecordFields record
         |> Array.map (fun x ->
             match x with
@@ -338,9 +458,11 @@ module Utils =
                 |> string
             | _ -> string x
         )
+        |> fun x -> Array.append x source'
 
 type Scraper<'T>(extractors) = 
-    let dataStore = ConcurrentBag<'T>()
+    let dataStore = ConcurrentBag<Source * 'T>()
+    let failedRequests = ConcurrentQueue<string>()
     let log = ConcurrentQueue<string>()
     let mutable loggingEnabled = true
 
@@ -378,17 +500,28 @@ type Scraper<'T>(extractors) =
                 | l when l < 50 -> input + "..."
                 | _ -> input.Substring(0, 50) + "..."
             logger.Post <| "Scraping data from " + substring
-            Utils.scrape<'T> input extractors dataStore
+            let record = Utils.scrape<'T> input extractors
+            match record with
+            | None -> None
+            | Some x ->
+                dataStore.Add(Html, x)
+                record
         | Utils.Url ->
             logger.Post <| "Downloading " + input
             let html = Http.get input
             match html with
             | None ->
                 logger.Post <| "Failed to download " + input
+                failedRequests.Enqueue input
                 None
             | Some html ->
                 logger.Post <| "Scraping data from " + input
-                Utils.scrape<'T> html extractors dataStore
+                let record = Utils.scrape<'T> html extractors
+                match record with
+                | None -> None
+                | Some x ->
+                    dataStore.Add(Url input, x)
+                    record
 
     /// Scrapes all the data items from the specified URL or HTML code.
     member __.ScrapeAll input = 
@@ -399,20 +532,39 @@ type Scraper<'T>(extractors) =
                 | l when l < 50 -> input + "..."
                 | _ -> input.Substring(0, 50) + "..."
             logger.Post <| "Scraping data from " + substring                
-            Utils.scrapeAll<'T> input extractors dataStore
+            let records = Utils.scrapeAll<'T> input extractors
+            match records with
+            | None -> None
+            | Some lst ->
+                lst |> List.iter (fun x -> dataStore.Add(Html, x))
+                records
         | Utils.Url ->
             logger.Post <| "Downloading " + input
             let html = Http.get input
             match html with
             | None ->
                 logger.Post <| "Failed to download " + input
+                failedRequests.Enqueue input
                 None
             | Some html ->
                 logger.Post <| "Scraping data from " + input                    
-                Utils.scrapeAll<'T> html extractors dataStore
+                let records = Utils.scrapeAll<'T> html extractors
+                match records with
+                | None -> None
+                | Some lst ->
+                    lst |> List.iter (fun x -> dataStore.Add(Url input, x))
+                    records
 
     /// Returns the data stored so far by the scraper.
     member __.Data = dataStore.ToArray()
+
+    /// Returns the urls that scraper failed to download.
+    member __.FailedRequests = failedRequests.ToArray()
+
+    /// Stores a failed HTTP request, use this method when
+    /// handling HTTP requests by yourself and you want to
+    /// track errors.
+    member __.StoreFailedRequest url = failedRequests.Enqueue url
 
     /// Returns the data stored so far by the scraper in JSON format.
     member __.JsonData =
@@ -426,6 +578,7 @@ type Scraper<'T>(extractors) =
         let headers =
             FSharpType.GetRecordFields typeof<'T>
             |> Array.map (fun x -> x.Name)
+            |> fun x -> Array.append x [|"Source"|]
         let sw = File.CreateText(path)
         let csv = new CsvWriter(sw)
         headers
@@ -448,10 +601,10 @@ type Scraper<'T>(extractors) =
         let headers =
             FSharpType.GetRecordFields typeof<'T>
             |> Array.map (fun x -> x.Name)
-        let columnsCount = Array.length headers
+        let columnsCount = Array.length headers + 1
         let rangeString = String.concat "" ["A1:"; string (char (columnsCount + 64)) + "1"]
         let rng = XlRange.get worksheet rangeString
-        Array.toRange rng headers
+        Array.toRange rng (Array.append headers [|"Source"|])
         dataStore
         |> Seq.iteri (fun idx x ->
             let idxString = string <| idx + 2
@@ -464,7 +617,8 @@ type Scraper<'T>(extractors) =
 
 type DynamicScraper<'T>(extractors) =
     let driver = new ChromeDriver(XTractSettings.chromeDriverDirectory)
-    let dataStore = ConcurrentBag<'T>()
+    let dataStore = ConcurrentBag<Source * 'T>()
+    let failedRequests = ConcurrentQueue<string>()
     let log = ConcurrentQueue<string>()
     let mutable loggingEnabled = true
 
@@ -496,14 +650,25 @@ type DynamicScraper<'T>(extractors) =
         waitComplete()
 
     /// Selects an element and types the specified text into it.
-    member __.SendKeys cssSelector text =
-        let elem = driver.FindElementByCssSelector(cssSelector)
+    member __.SendKeysCss cssSelector text =
+        let elem = driver.FindElementByCssSelector cssSelector
+        printfn "%A" elem.Displayed
+        elem.SendKeys(text)
+
+    /// Selects an element and types the specified text into it.
+    member __.SendKeysXpath xpath text =
+        let elem = driver.FindElementByXPath xpath
         printfn "%A" elem.Displayed
         elem.SendKeys(text)
 
     /// Selects an element and clicks it.
-    member __.Click cssSelector =
+    member __.ClickCss cssSelector =
         driver.FindElementByCssSelector(cssSelector).Click()
+        waitComplete()
+
+    /// Selects an element and clicks it.
+    member __.ClickXpath xpath =
+        driver.FindElementByXPath(xpath).Click()
         waitComplete()
 
     /// Closes the browser drived by the scraper.
@@ -520,18 +685,38 @@ type DynamicScraper<'T>(extractors) =
 
     /// Scrapes a single data item from the specified URL or HTML code.
     member __.Scrape() =
-        logger.Post <| "Scraping data from " + driver.Url
+        let url = driver.Url
+        logger.Post <| "Scraping data from " + url
         let html = driver.PageSource
-        Utils.scrape<'T> html extractors dataStore        
+        let record = Utils.scrape<'T> html extractors
+        match record with
+        | None -> None
+        | Some x ->
+            dataStore.Add(Url url, x)
+            record
 
     /// Scrapes all the data items from the specified URL or HTML code.    
     member __.ScrapeAll() =
-        logger.Post <| "Scraping data from " + driver.Url
+        let url = driver.Url
+        logger.Post <| "Scraping data from " + url
         let html = driver.PageSource
-        Utils.scrapeAll<'T> html extractors dataStore
+        let records = Utils.scrapeAll<'T> html extractors
+        match records with
+        | None -> None
+        | Some lst ->
+            lst |> List.iter (fun x -> dataStore.Add(Url url, x))
+            records
 
     /// Returns the data stored so far by the scraper.
     member __.Data = dataStore.ToArray()
+
+    /// Returns the urls that scraper failed to download.
+    member __.FailedRequests = failedRequests.ToArray()
+
+    /// Stores a failed HTTP request, use this method when
+    /// handling HTTP requests by yourself and you want to
+    /// track errors.
+    member __.StoreFailedRequest url = failedRequests.Enqueue url
 
     /// Returns the data stored so far by the scraper in JSON format.
     member __.JsonData =
@@ -545,6 +730,7 @@ type DynamicScraper<'T>(extractors) =
         let headers =
             FSharpType.GetRecordFields typeof<'T>
             |> Array.map (fun x -> x.Name)
+            |> fun x -> Array.append x [|"Source"|]
         let sw = File.CreateText(path)
         let csv = new CsvWriter(sw)
         headers
@@ -567,7 +753,7 @@ type DynamicScraper<'T>(extractors) =
         let headers =
             FSharpType.GetRecordFields typeof<'T>
             |> Array.map (fun x -> x.Name)
-        let columnsCount = Array.length headers
+        let columnsCount = Array.length headers + 1
         let rangeString = String.concat "" ["A1:"; string (char (columnsCount + 64)) + "1"]
         let rng = XlRange.get worksheet rangeString
         Array.toRange rng headers

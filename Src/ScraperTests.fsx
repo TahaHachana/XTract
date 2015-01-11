@@ -1,56 +1,104 @@
 ﻿#I @"bin\Release\"
 #r "XTract.dll"
+#r @"C:\Users\AHMED\Documents\GitHub\XTract\Src\packages\Deedle.1.0.6\lib\net40\Deedle.dll"
 
 open System
 open System.IO
 open XTract
 
-open System
-open System.IO
-open System.Net
- 
 let name =
-    "div:nth-child(5).anchor > div:nth-child(2) > div.row.data-row > div.col-md-5 > div:nth-child(1).media > div:nth-child(2).media-body > h4:nth-child(1).media-heading > a:nth-child(1)"
+    "div > div > div > h1 > span"
     |> Extractor.New
-    |> Extractor.WithAttributes ["text"] //; "href"]
 
-let tags =
-    "div:nth-child(5).anchor > div:nth-child(2) > div.row.data-row > div.col-md-5 > div:nth-child(1).media > div:nth-child(2).media-body > div:nth-child(4) > span.label.label-info"
+let location =
+    """//*[@id="root"]/div[3]/div[2]/div/div[2]/div/div[2]/div[1]/div/div[2]/div/div[1]/div/div[2]/div/div[3]/div/div[2]/div/span/a"""
     |> Extractor.New
+    |> Extractor.WithType Xpath
+
+let roles =
+    """//div[@data-field="tags_roles"]/span"""
+    |> Extractor.New
+    |> Extractor.WithType Xpath
     |> Extractor.WithMany true
-    |> Extractor.WithAttributes ["text"; "class"]
 
-let extractors = [name; tags]
-let code = CodeGen.recordCode extractors
+let linkedin =
+    ".fontello-linkedin"
+    |> Extractor.New
+    |> Extractor.WithAttributes ["href"]
 
-type Pkg =
+let twitter =
+    ".fontello-twitter"
+    |> Extractor.New
+    |> Extractor.WithAttributes ["href"]
+
+let facebook =
+    ".fontello-facebook"
+    |> Extractor.New
+    |> Extractor.WithAttributes ["href"]
+
+let website =
+    """//a[@data-field="online_bio_url"]"""
+    |> Extractor.New
+    |> Extractor.WithAttributes ["href"]
+    |> Extractor.WithType Xpath
+
+let extractors = [name; location; roles; linkedin; twitter; facebook; website]
+
+type Investor =
     {
-        details: string
-        tags: Map<string, string> list
+        Name: string
+        Location: string
+        Roles: string list
+        Linkedin: string
+        Twitter: string
+        Facebook: string
+        Website: string
     }
 
-let scraper = Scraper<Pkg>([name; tags])
-let test = scraper.ScrapeAll "http://fsharp-hub.apphb.com/"
+let scraper = Scraper<Investor> extractors
 
-let test1 = scraper.Scrape "http://fsharp-hub.apphb.com/"
+scraper.Scrape "https://angel.co/asenkut"
 
-//let html =
-//    Http.get "http://fsharp-hub.apphb.com/"
-//    |> Option.get
-//
-//#r @"C:\Users\AHMED\Documents\GitHub\XTract\Src\packages\Newtonsoft.Json.6.0.7\lib\net40\Newtonsoft.Json.dll"
-//
-//Newtonsoft.Json.JsonConvert.DeserializeObject(test, typeof<Pkg>)
-//
-//open System.Collections.Generic
-//
-//let d = Dictionary<string, obj>()
-//
-//d.Add("1", "Streams.CSharp 0.2.8")
-//d.Add("2", ["F#/C#";"Streams"])
-//open Microsoft.FSharp.Reflection
-//
-//let record = FSharpValue.MakeRecord(typeof<Pkg>, d.Values |> Seq.toArray)
+scraper.Scrape "https://angel.co/moskov"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -74,7 +122,7 @@ let tweet =
 
 let extractors = [avatar; screenName; tweet]
 
-// Get some help to generate the record code that matches the extractors
+// Get some help to generate the record type that matches the extractors
 let code = CodeGen.recordCode extractors
 
 // Describe the data model.
@@ -97,10 +145,13 @@ let firstMatch = scraper.Scrape url
 let allMatches = scraper.ScrapeAll url
 
 // Scrape multiple pages and let the scraper handle storing
-// the records, then get the data as an array or in JSON format.
-let data = scraper.Data()
+// the records, then get the data as an array, in JSON format
+// or as a Deedle data frame.
+let data = scraper.Data
 
-let jsonData = scraper.JsonData()
+let jsonData = scraper.JsonData
+
+let df = scraper.DataFrame
 
 // Save as CSV 
 let desktop = Environment.GetFolderPath Environment.SpecialFolder.Desktop

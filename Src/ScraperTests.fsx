@@ -7,40 +7,37 @@ open System.IO
 open XTract
 
 let name =
-    "div > div > div > h1 > span"
+    Css "div > div > div > h1 > span"
     |> Extractor.New
 
 let location =
-    """//*[@id="root"]/div[3]/div[2]/div/div[2]/div/div[2]/div[1]/div/div[2]/div/div[1]/div/div[2]/div/div[3]/div/div[2]/div/span/a"""
+    Xpath """//*[@id="root"]/div[3]/div[2]/div/div[2]/div/div[2]/div[1]/div/div[2]/div/div[1]/div/div[2]/div/div[3]/div/div[2]/div/span/a"""
     |> Extractor.New
-    |> Extractor.WithType Xpath
 
 let roles =
-    """//div[@data-field="tags_roles"]/span"""
+    Xpath """//div[@data-field="tags_roles"]/span"""
     |> Extractor.New
-    |> Extractor.WithType Xpath
     |> Extractor.WithMany true
 
 let linkedin =
-    ".fontello-linkedin"
+    Css ".fontello-linkedin"
     |> Extractor.New
     |> Extractor.WithAttributes ["href"]
 
 let twitter =
-    ".fontello-twitter"
+    Css ".fontello-twitter"
     |> Extractor.New
     |> Extractor.WithAttributes ["href"]
 
 let facebook =
-    ".fontello-facebook"
+    Css ".fontello-facebook"
     |> Extractor.New
     |> Extractor.WithAttributes ["href"]
 
 let website =
-    """//a[@data-field="online_bio_url"]"""
+    Xpath """//a[@data-field="online_bio_url"]"""
     |> Extractor.New
     |> Extractor.WithAttributes ["href"]
-    |> Extractor.WithType Xpath
 
 let extractors = [name; location; roles; linkedin; twitter; facebook; website]
 

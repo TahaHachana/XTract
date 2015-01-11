@@ -130,7 +130,7 @@ module Scrapers =
         let key = "key" + (string <| dictionary.Count + 1)     
         dictionary.Add(key, value) 
 
-    let falseSingleEmpty extractor (dictionary:Dictionary<string, obj>) =
+    let falseSingleEmpty (dictionary:Dictionary<string, obj>) =
 //        let value =
 //            match extractor.attributes.Head with
 //                | "text" ->
@@ -205,7 +205,7 @@ module Scrapers =
         let key = "key" + (string <| dictionary.Count + 1)     
         dictionary.Add(key, lst)
 
-    let trueSingleEmpty extractor (dictionary:Dictionary<string, obj>) =
+    let trueSingleEmpty (dictionary:Dictionary<string, obj>) =
 //        let lst =
 //            nodes
 //            |> List.map (fun htmlNode ->
@@ -246,7 +246,7 @@ module Scrapers =
         let key = "key" + (string <| dictionary.Count + 1)     
         dictionary.Add(key, lst)
 
-    let trueManyEmpty extractor (dictionary:Dictionary<string, obj>) =
+    let trueManyEmpty (dictionary:Dictionary<string, obj>) =
 //        let lst =
 //            nodes
 //            |> List.map (fun htmlNode ->
@@ -284,12 +284,12 @@ module Scrapers =
             match extractor.many with
             | false ->
                 match extractor.attributes with
-                | [_] -> falseSingleEmpty extractor dictionary
+                | [_] -> falseSingleEmpty dictionary
                 | _ -> falseManyEmpty extractor dictionary
             | true ->
                 match extractor.attributes with
-                | [_] -> trueSingleEmpty extractor dictionary
-                | _ -> trueManyEmpty extractor dictionary
+                | [_] -> trueSingleEmpty dictionary
+                | _ -> trueManyEmpty dictionary
             
 
     let selection (root:HtmlNode) extractor =
@@ -442,6 +442,11 @@ module Utils =
             record)
         |> Some
 
+    let lstString (lst:'T list) =
+        lst
+        |> List.map (fun x -> x.ToString())
+        |> String.concat "; "
+
     let fields (source, record) =
         let source' =
             match source with
@@ -450,17 +455,18 @@ module Utils =
         FSharpValue.GetRecordFields record
         |> Array.map (fun x ->
             match x with
-            | :? (string list) as lst -> lst.ToString()
-            | :? Map<string, string> as map ->  string <| Map.toList map
+            | :? (string list) as lst -> lstString lst
+            | :? Map<string, string> as map ->  lstString <| Map.toList map
             | :? (Map<string, string> list) as lst ->
                 lst
                 |> List.map Map.toList
-                |> string
+                |> List.map lstString
+                |> String.concat "\n"
             | _ -> string x
         )
         |> fun x -> Array.append x source'
 
-type Scraper<'T>(extractors) = 
+type Scraper<'T when 'T : equality>(extractors) = 
     let dataStore = ConcurrentBag<Source * 'T>()
     let failedRequests = ConcurrentQueue<string>()
     let log = ConcurrentQueue<string>()
@@ -556,7 +562,10 @@ type Scraper<'T>(extractors) =
                     records
 
     /// Returns the data stored so far by the scraper.
-    member __.Data = dataStore.ToArray()
+    member __.Data =
+        dataStore
+        |> Seq.distinctBy snd
+        |> Seq.toArray
 
     /// Returns the urls that scraper failed to download.
     member __.FailedRequests = failedRequests.ToArray()
@@ -615,7 +624,7 @@ type Scraper<'T>(extractors) =
         XlWorkbook.saveAs workbook path
         XlApp.quit xl
 
-type DynamicScraper<'T>(extractors) =
+type DynamicScraper<'T when 'T : equality>(extractors) =
     let driver = new ChromeDriver(XTractSettings.chromeDriverDirectory)
     let dataStore = ConcurrentBag<Source * 'T>()
     let failedRequests = ConcurrentQueue<string>()
@@ -708,7 +717,10 @@ type DynamicScraper<'T>(extractors) =
             records
 
     /// Returns the data stored so far by the scraper.
-    member __.Data = dataStore.ToArray()
+    member __.Data =
+        dataStore
+        |> Seq.distinctBy snd
+        |> Seq.toArray
 
     /// Returns the urls that scraper failed to download.
     member __.FailedRequests = failedRequests.ToArray()

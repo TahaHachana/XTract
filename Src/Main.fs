@@ -60,31 +60,6 @@ type Extractor =
                 many = many
         }
 
-//module Test =
-//    let html = ""
-//
-//    let doc = HtmlDocument()
-//    doc.LoadHtml html
-//    let root = doc.DocumentNode
-//    let xpath = """"""
-//    let node = root.SelectSingleNode xpath
-//    let nodes = root.SelectNodes xpath |> Seq.length
-//
-//    let name =
-//        "div > div > div > h1 > span"
-//        |> Extractor.New
-//
-//    let location =
-//    //    "span[itemprop=locality]"
-//        """//*[@id="root"]/div[3]/div[2]/div/div[2]/div/div[2]/div[1]/div/div[2]/div/div[1]/div/div[2]/div/div[3]/div/div[2]/div/span/a"""
-//        |> Extractor.New
-//        |> Extractor.WithType Xpath
-//
-//    let extractor =
-//        ".fontello-linkedin"
-//        |> Extractor.New
-//    let extractors = [name; extractor]
-
 module CodeGen =
 
     let recordCode extractors =
@@ -501,11 +476,7 @@ type Scraper<'T when 'T : equality>(extractors) =
     member __.Scrape input =
         match input with
         | Utils.Html ->
-            let substring =
-                match input.Length with
-                | l when l < 50 -> input + "..."
-                | _ -> input.Substring(0, 50) + "..."
-            logger.Post <| "Scraping data from " + substring
+            logger.Post "Scraping data from HTML code"
             let record = Utils.scrape<'T> input extractors
             match record with
             | None -> None
@@ -513,15 +484,13 @@ type Scraper<'T when 'T : equality>(extractors) =
                 dataStore.Add(Html, x)
                 record
         | Utils.Url ->
-            logger.Post <| "Downloading " + input
+            logger.Post <| "Scraping data from " + input
             let html = Http.get input
             match html with
             | None ->
-                logger.Post <| "Failed to download " + input
                 failedRequests.Enqueue input
                 None
             | Some html ->
-                logger.Post <| "Scraping data from " + input
                 let record = Utils.scrape<'T> html extractors
                 match record with
                 | None -> None
@@ -533,11 +502,7 @@ type Scraper<'T when 'T : equality>(extractors) =
     member __.ScrapeAll input = 
         match input with
         | Utils.Html ->
-            let substring =
-                match input.Length with
-                | l when l < 50 -> input + "..."
-                | _ -> input.Substring(0, 50) + "..."
-            logger.Post <| "Scraping data from " + substring                
+            logger.Post <| "Scraping data from HTML code"                
             let records = Utils.scrapeAll<'T> input extractors
             match records with
             | None -> None
@@ -545,21 +510,63 @@ type Scraper<'T when 'T : equality>(extractors) =
                 lst |> List.iter (fun x -> dataStore.Add(Html, x))
                 records
         | Utils.Url ->
-            logger.Post <| "Downloading " + input
+            logger.Post <| "Scraping data from " + input
             let html = Http.get input
             match html with
             | None ->
-                logger.Post <| "Failed to download " + input
                 failedRequests.Enqueue input
                 None
             | Some html ->
-                logger.Post <| "Scraping data from " + input                    
                 let records = Utils.scrapeAll<'T> html extractors
                 match records with
                 | None -> None
                 | Some lst ->
                     lst |> List.iter (fun x -> dataStore.Add(Url input, x))
                     records
+
+    /// Throttles scraping a single data item from the specified URLs
+    /// by sending 5 concurrent requests and executes the async computation
+    /// once done.
+    member __.ThrottleScrape urls doneAsync =
+        let asyncs =
+            urls
+            |> Seq.map (fun x ->
+                async {
+                    let! html = Http.getAsync x
+                    match html with
+                    | None ->
+                        failedRequests.Enqueue x
+                    | Some html ->
+                        let record = Utils.scrape<'T> html extractors
+                        match record with
+                        | None -> ()
+                        | Some r ->
+                            dataStore.Add(Url x, r)
+                }                
+            )
+        Throttler.throttle asyncs 5 doneAsync
+
+    /// Throttles scraping all the data items from the specified URLs
+    /// by sending 5 concurrent requests and executes the async computation
+    /// once done.
+    member __.ThrottleScrapeAll urls doneAsync = 
+        let asyncs =
+            urls
+            |> Seq.map (fun x ->
+                async {
+                    let! html = Http.getAsync x
+                    match html with
+                    | None ->
+                        failedRequests.Enqueue x
+                    | Some html ->
+                        let records = Utils.scrapeAll<'T> html extractors
+                        match records with
+                        | None -> ()
+                        | Some lst ->
+                            lst |> List.iter (fun r -> dataStore.Add(Url x, r))
+                }                
+            )
+        Throttler.throttle asyncs 5 doneAsync
 
     /// Returns the data stored so far by the scraper.
     member __.Data =

@@ -6,7 +6,7 @@ open Fizzler.Systems.HtmlAgilityPack
 open HtmlAgilityPack
 open Microsoft.FSharp.Reflection
 open Newtonsoft.Json
-open OpenQA.Selenium.Chrome
+open OpenQA.Selenium.PhantomJS
 open Settings
 open SpreadSharp
 open SpreadSharp.Collections
@@ -632,17 +632,24 @@ type Scraper<'T when 'T : equality>(extractors) =
         XlApp.quit xl
 
 type DynamicScraper<'T when 'T : equality>(extractors) =
-    let driver = new ChromeDriver(XTractSettings.chromeDriverDirectory)
+//    let driver = new ChromeDriver(XTractSettings.chromeDriverDirectory)
     let dataStore = ConcurrentBag<Source * 'T>()
     let failedRequests = ConcurrentQueue<string>()
     let log = ConcurrentQueue<string>()
     let mutable loggingEnabled = true
+    let f html url =
+        let record = Utils.scrape<'T> html extractors
+        match record with
+        | None -> ()
+        | Some x -> dataStore.Add(Url url, x)
+    
+    let crawler = Crawler.Crawler f
 
-    let rec waitComplete() =
-        let state = driver.ExecuteScript("return document.readyState;").ToString()
-        match state with
-        | "complete" -> ()
-        | _ -> waitComplete()
+//    let rec waitComplete() =
+//        let state = driver.ExecuteScript("return document.readyState;").ToString()
+//        match state with
+//        | "complete" -> ()
+//        | _ -> waitComplete()
 
     let logger =
         MailboxProcessor.Start(fun inbox ->
@@ -661,34 +668,34 @@ type DynamicScraper<'T when 'T : equality>(extractors) =
         )
     
     /// Loads the specified URL.
-    member __.Get url =
-        driver.Url <- url
-        waitComplete()
-
-    /// Selects an element and types the specified text into it.
-    member __.SendKeysCss cssSelector text =
-        let elem = driver.FindElementByCssSelector cssSelector
-        printfn "%A" elem.Displayed
-        elem.SendKeys(text)
-
-    /// Selects an element and types the specified text into it.
-    member __.SendKeysXpath xpath text =
-        let elem = driver.FindElementByXPath xpath
-        printfn "%A" elem.Displayed
-        elem.SendKeys(text)
-
-    /// Selects an element and clicks it.
-    member __.ClickCss cssSelector =
-        driver.FindElementByCssSelector(cssSelector).Click()
-        waitComplete()
-
-    /// Selects an element and clicks it.
-    member __.ClickXpath xpath =
-        driver.FindElementByXPath(xpath).Click()
-        waitComplete()
-
-    /// Closes the browser drived by the scraper.
-    member __.Quit() = driver.Quit()
+//    member __.Get url =
+//        driver.Url <- url
+//        waitComplete()
+//
+//    /// Selects an element and types the specified text into it.
+//    member __.CssSendKeys cssSelector text =
+//        let elem = driver.FindElementByCssSelector cssSelector
+//        printfn "%A" elem.Displayed
+//        elem.SendKeys(text)
+//
+//    /// Selects an element and types the specified text into it.
+//    member __.XpathSendKeys xpath text =
+//        let elem = driver.FindElementByXPath xpath
+//        printfn "%A" elem.Displayed
+//        elem.SendKeys(text)
+//
+//    /// Selects an element and clicks it.
+//    member __.CssClick cssSelector =
+//        driver.FindElementByCssSelector(cssSelector).Click()
+//        waitComplete()
+//
+//    /// Selects an element and clicks it.
+//    member __.XpathClick xpath =
+//        driver.FindElementByXPath(xpath).Click()
+//        waitComplete()
+//
+//    /// Closes the browser drived by the scraper.
+//    member __.Quit() = driver.Quit()
 
     /// Posts a new log message to the scraper's logging agent.
     member __.Log msg = logger.Post msg
@@ -700,28 +707,46 @@ type DynamicScraper<'T when 'T : equality>(extractors) =
     member __.WithLogging enabled = loggingEnabled <- enabled
 
     /// Scrapes a single data item from the specified URL or HTML code.
-    member __.Scrape() =
-        let url = driver.Url
-        logger.Post <| "Scraping data from " + url
-        let html = driver.PageSource
-        let record = Utils.scrape<'T> html extractors
-        match record with
-        | None -> None
-        | Some x ->
-            dataStore.Add(Url url, x)
-            record
+    member __.Scrape(urls) = crawler.Crawl urls
+//        let f html url =
+//            let record = Utils.scrape<'T> html extractors
+//            match record with
+//            | None -> ()
+//            | Some x -> dataStore.Add(Url url, x)
+//        Crawler.crawl urls browsers f doneAsync
+//        let url = driver.Url
+//        logger.Post <| "Scraping data from " + url
+//        let html = driver.PageSource
+//        let record = Utils.scrape<'T> html extractors
+//        match record with
+//        | None -> None
+//        | Some x ->
+//            dataStore.Add(Url url, x)
+//            record
+
+    /// Scrapes a single data item from the specified URL or HTML code.
+//    member __.Scrape() =
+//        let url = driver.Url
+//        logger.Post <| "Scraping data from " + url
+//        let html = driver.PageSource
+//        let record = Utils.scrape<'T> html extractors
+//        match record with
+//        | None -> None
+//        | Some x ->
+//            dataStore.Add(Url url, x)
+//            record
 
     /// Scrapes all the data items from the specified URL or HTML code.    
-    member __.ScrapeAll() =
-        let url = driver.Url
-        logger.Post <| "Scraping data from " + url
-        let html = driver.PageSource
-        let records = Utils.scrapeAll<'T> html extractors
-        match records with
-        | None -> None
-        | Some lst ->
-            lst |> List.iter (fun x -> dataStore.Add(Url url, x))
-            records
+//    member __.ScrapeAll() =
+//        let url = driver.Url
+//        logger.Post <| "Scraping data from " + url
+//        let html = driver.PageSource
+//        let records = Utils.scrapeAll<'T> html extractors
+//        match records with
+//        | None -> None
+//        | Some lst ->
+//            lst |> List.iter (fun x -> dataStore.Add(Url url, x))
+//            records
 
     /// Returns the data stored so far by the scraper.
     member __.Data =

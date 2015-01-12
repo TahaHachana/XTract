@@ -55,16 +55,19 @@
     <Compile Include="Html.fs" />
     <Compile Include="Throttler.fs" />
     <Compile Include="Http.fs" />
+    <Compile Include="Crawler.fs" />
     <Compile Include="Settings.fs" />
     <Compile Include="Main.fs" />
     <None Include="ScraperTests.fsx" />
     <None Include="ThrottlingTests.fsx" />
+    <None Include="DynamicScraperTests.fsx" />
     <None Include="FSharpOrgMembers.fsx" />
     <Content Include="packages.config" />
     <Content Include="app.config" />
     <None Include="logo.png" />
     <None Include="logo.svg" />
     <None Include="chromedriver.exe" />
+    <Content Include="Urls.txt" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="CsvHelper">

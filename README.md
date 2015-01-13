@@ -15,64 +15,99 @@ Usage
 -----
 
 ```fsharp
-#load "../packages/XTract.0.2.6/XTractBootstrap.fsx"
+#load @"../Src/packages/XTract.0.3.2/XTractBootstrap.fsx"
 
-open System
-open System.IO
 open XTract
 
-// Describe the data model.
-type Tweet =
+// Target urls
+let urls =
+    [
+        "http://www.nuget.org/packages/WebSharper/"
+        "http://www.nuget.org/packages/FSharp.Data.Toolbox.Twitter/"
+        "http://www.nuget.org/packages/R.NET.Community.FSharp/"
+        "http://www.nuget.org/packages/FSharp.Data/"
+        "http://www.nuget.org/packages/FsLab/"
+        "http://www.nuget.org/packages/XPlot.GoogleCharts/"
+        "http://www.nuget.org/packages/XTract/"
+        "http://www.nuget.org/packages/PerfUtil/"
+        "http://www.nuget.org/packages/Deedle/"
+        "http://www.nuget.org/packages/Paket/"
+    ]
+
+// Data extractors
+let name =
+    Css "div > div > div > div > h1"
+    |> Extractor.New
+
+let version =
+    Css "div > div > div > div > h2"
+    |> Extractor.New
+
+let downloads =
+    Css "div > div > div > div:nth-child(1).stat > p:nth-child(1).stat-number"
+    |> Extractor.New
+
+let project =
+    Xpath """//*[@id="sideColumn"]/nav/ul/li[1]/a"""
+    |> Extractor.New
+    |> Extractor.WithAttributes ["href"]
+
+let owners =
+    Css ".owner-name"
+    |> Extractor.New
+    |> Extractor.WithMany true ThirdParent
+
+let extractors = [name; version; downloads; project; owners]
+
+// Get some help when mapping the extractors to
+// an F# record type
+let recordCode = CodeGen.recordCode extractors
+
+// Data model
+type Pkg =
     {
-        avatar: string
-        screenName: string
-        account: string
-        tweet: string
+        name: string
+        version: string
+        downloads: string
+        project: string
+        owners: string list
     }
 
-// Define the data extractors.
-// avatar field
-let avatar =
-    "div:nth-child(1).anchor > div:nth-child(2) > div.row.data-row > div.col-md-5 > div:nth-child(1).media > a:nth-child(1).media-left > img:nth-child(1).avatar.lazy"
-    |> Extractor.New
-    |> Extractor.WithAttributes ["data-original"]
+// Initiliaze a scraper
+let scraper = Scraper<Pkg>(extractors)
 
-// screenName and account fields
-let screenName =
-    "div > div > div.media-body.twitter-media-body > h4.media-heading > a"
-    |> Extractor.New
-    |> Extractor.WithAttributes ["text"; "href"]
+let url = urls.[0]
 
-// tweet text field
-let tweet =
-    "div > div > div > div.media-body.twitter-media-body > p"
-    |> Extractor.New
+// Scrape a single URL
+scraper.Scrape url
 
-// Initialize a scraper
-let scraper = Scraper<Tweet> [avatar; screenName; tweet]
+// Handle URL download yourself then scrape the HTML code
+let html =
+    Http.get url
+    |> Option.get
 
-let url = "http://fsharp-hub.apphb.com/"
+scraper.Scrape html
 
-// Scrape a single item
-let firstMatch = scraper.Scrape url
+// Scrape the urls list
+let doneAsync = async {printfn "Done!"}
+scraper.ThrottleScrape urls doneAsync
 
-// Or scrape all the items
-let allMatches = scraper.ScrapeAll url
+// Data as an array
+scraper.Data
 
-// Scrape multiple pages and let the scraper handle storing
-// the records, then get the data as an array or in JSON format.
-let data = scraper.Data()
+// Data as JSON
+scraper.JsonData
 
-let jsonData = scraper.JsonData()
+// Data as data frame
+scraper.DataFrame
 
-// Save as CSV 
+// Save as Excel
+open System
+open System.IO
+
 let desktop = Environment.GetFolderPath Environment.SpecialFolder.Desktop
-let path = Path.Combine(desktop, "data.csv")
-scraper.SaveCsv(path)
-
-// Save an Excel workbook
-let path' = Path.Combine(desktop, "data.xlsx")
-scraper.SaveExcel path'
+let path = Path.Combine(desktop, "Data.xlsx")
+scraper.SaveExcel path
 ```
 
 Contact

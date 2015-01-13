@@ -19,9 +19,10 @@ module String =
 
     let decodeHtml str = WebUtility.HtmlDecode str
 
-    let cleanHtml str =    
+    let stripHtml str =    
         stripSpaces str
         |> stripInlineJsCss
+        |> stripTags
         |> decodeHtml
         |> fun x -> x.Trim()
 

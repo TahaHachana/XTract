@@ -14,3 +14,4 @@ open XTract.Settings
 
 // set ChromeDriver.exe executable location
 XTractSettings.chromeDriverDirectory <- Path.Combine(__SOURCE_DIRECTORY__, "./tools/")
+XTractSettings.phantomDriverDirectory <- Path.Combine(__SOURCE_DIRECTORY__, "./tools/")

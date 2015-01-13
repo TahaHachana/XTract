@@ -101,7 +101,7 @@
       <Private>True</Private>
     </Reference>
     <Reference Include="XTract">
-      <HintPath>..\Src\packages\XTract.0.3.0\Lib\Net45\XTract.dll</HintPath>
+      <HintPath>..\Src\packages\XTract.0.3.2\Lib\Net45\XTract.dll</HintPath>
       <Private>True</Private>
     </Reference>
   </ItemGroup>

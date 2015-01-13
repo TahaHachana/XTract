@@ -3,7 +3,7 @@ module XTract.Extraction
 
 type Selector = Css of string | Xpath of string
 
-type GroupBy = FirstParent | SecondParent | ThirdParent
+type GroupBy = FirstParent | SecondParent | ThirdParent | FourthParent | FifthParent
 
 //type 
 /// A type for describing a property to scrape.

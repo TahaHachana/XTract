@@ -104,6 +104,7 @@ type Scraper<'T when 'T : equality>(extractors) =
             urls
             |> Seq.map (fun x ->
                 async {
+                    logger.Post <| "Scraping " + x
                     let! html = Http.getAsync x
                     match html with
                     | None ->
@@ -112,8 +113,7 @@ type Scraper<'T when 'T : equality>(extractors) =
                         let record = Utils.scrape<'T> html extractors
                         match record with
                         | None -> ()
-                        | Some r ->
-                            dataStore.Add(Url x, r)
+                        | Some r -> dataStore.Add(Url x, r)
                 }                
             )
         Throttler.throttle asyncs 5 doneAsync
@@ -156,10 +156,13 @@ type Scraper<'T when 'T : equality>(extractors) =
 
     /// Returns the data stored so far by the scraper in JSON format.
     member __.JsonData =
-        JsonConvert.SerializeObject(dataStore, Formatting.Indented)
+        let records = dataStore |> Seq.map snd
+        JsonConvert.SerializeObject(records, Formatting.Indented)
 
     /// Returns the data stored so far by the scraper as a Deedle data frame.
-    member __.DataFrame = Frame.ofRecords dataStore
+    member __.DataFrame =
+        let records = dataStore |> Seq.map snd        
+        Frame.ofRecords records
 
     /// Saves the data stored by the scraper in a CSV file.
     member __.SaveCsv(path) =

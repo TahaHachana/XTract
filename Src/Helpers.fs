@@ -160,9 +160,11 @@ module Scrapers =
                 | Some x ->
 //                    let groups =
                     match extractor.groupBy.Value with
-                    | FirstParent-> x |> Seq.groupBy (fun n -> n.ParentNode)
-                    | SecondParent-> x |> Seq.groupBy (fun n -> n.ParentNode.ParentNode)
-                    | ThirdParent-> x |> Seq.groupBy (fun n -> n.ParentNode.ParentNode.ParentNode)
+                    | FirstParent -> x |> Seq.groupBy (fun n -> n.ParentNode)
+                    | SecondParent -> x |> Seq.groupBy (fun n -> n.ParentNode.ParentNode)
+                    | ThirdParent -> x |> Seq.groupBy (fun n -> n.ParentNode.ParentNode.ParentNode)
+                    | FourthParent -> x |> Seq.groupBy (fun n -> n.ParentNode.ParentNode.ParentNode.ParentNode)
+                    | FifthParent -> x |> Seq.groupBy (fun n -> n.ParentNode.ParentNode.ParentNode.ParentNode.ParentNode)
                     |> Seq.map snd
                     |> Seq.toList                        
 //                    x

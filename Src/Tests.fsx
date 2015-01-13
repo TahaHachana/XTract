@@ -1,5 +1,5 @@
-﻿#r @"./packages/Deedle.1.0.6/lib/net40/Deedle.dll"
-#r "bin/Release/XTract.dll"
+﻿#r @"..\Src\packages\Deedle.1.0.6\lib\net40\Deedle.dll"
+#r @"../Src\bin\Release\XTract.dll"
 
 //============
 // Single page
@@ -17,6 +17,8 @@ let urls =
         "http://www.nuget.org/packages/XPlot.GoogleCharts/"
         "http://www.nuget.org/packages/XTract/"
         "http://www.nuget.org/packages/PerfUtil/"
+        "http://www.nuget.org/packages/Deedle/"
+        "http://www.nuget.org/packages/Paket/"
     ]
 
 let name =
@@ -56,6 +58,32 @@ type Pkg =
 
 let scraper = Scraper<Pkg>(extractors)
 
-scraper.Scrape urls.[4]
+let url = urls.[0]
+
+// Scrape a single URL
+scraper.Scrape url
+
+// Handle URL download then scrape
+let html =
+    Http.get url
+    |> Option.get
+
+scraper.Scrape html
+
+// Scrape a list of URLs
+let doneAsync = async {printfn "Done!"}
+scraper.ThrottleScrape urls doneAsync
+
+// Data as an array
+scraper.Data
+
+// Data as JSON
+scraper.JsonData
+
+// Data as data frame
+scraper.DataFrame
+
+// Save Excel
+scraper.SaveExcel @"C:\Users\AHMED\Desktop\data.xlsx"
 
 

@@ -158,10 +158,17 @@ module Scrapers =
                 match selection with
                 | None -> []
                 | Some x ->
-                    x
-                    |> Seq.groupBy (fun n -> n.ParentNode)
+//                    let groups =
+                    match extractor.groupBy.Value with
+                    | FirstParent-> x |> Seq.groupBy (fun n -> n.ParentNode)
+                    | SecondParent-> x |> Seq.groupBy (fun n -> n.ParentNode.ParentNode)
+                    | ThirdParent-> x |> Seq.groupBy (fun n -> n.ParentNode.ParentNode.ParentNode)
                     |> Seq.map snd
-                    |> Seq.toList
+                    |> Seq.toList                        
+//                    x
+//                    |> Seq.groupBy (fun n -> n.ParentNode)
+//                    |> Seq.map snd
+//                    |> Seq.toList
         extractor, selection, groups
 
     let selection' (extractor, selection, groups) idx =

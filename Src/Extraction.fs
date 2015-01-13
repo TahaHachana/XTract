@@ -1,6 +1,9 @@
-﻿module XTract.Extraction
+﻿[<AutoOpen>]
+module XTract.Extraction
 
 type Selector = Css of string | Xpath of string
+
+type GroupBy = FirstParent | SecondParent | ThirdParent
 
 //type 
 /// A type for describing a property to scrape.
@@ -15,6 +18,7 @@ type Extractor =
         pattern: string
         attributes: string list
         many: bool
+        groupBy: GroupBy option
     }
     
     static member New selector = 
@@ -23,6 +27,7 @@ type Extractor =
             pattern = "^()(.*?)()$"
             attributes = [ "text" ]
             many = false
+            groupBy = None
         }
     
     static member WithPattern pattern property =
@@ -37,8 +42,9 @@ type Extractor =
                 attributes = attributes
         }
 
-    static member WithMany many property =
+    static member WithMany many groupBy property =
         {
             property with
                 many = many
+                groupBy = Some groupBy
         }

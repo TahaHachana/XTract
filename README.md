@@ -15,24 +15,9 @@ Usage
 -----
 
 ```fsharp
-#load @"../Src/packages/XTract.0.3.2/XTractBootstrap.fsx"
+#load @"../Src/packages/XTract.0.3.4/XTractBootstrap.fsx"
 
 open XTract
-
-// Target urls
-let urls =
-    [
-        "http://www.nuget.org/packages/WebSharper/"
-        "http://www.nuget.org/packages/FSharp.Data.Toolbox.Twitter/"
-        "http://www.nuget.org/packages/R.NET.Community.FSharp/"
-        "http://www.nuget.org/packages/FSharp.Data/"
-        "http://www.nuget.org/packages/FsLab/"
-        "http://www.nuget.org/packages/XPlot.GoogleCharts/"
-        "http://www.nuget.org/packages/XTract/"
-        "http://www.nuget.org/packages/PerfUtil/"
-        "http://www.nuget.org/packages/Deedle/"
-        "http://www.nuget.org/packages/Paket/"
-    ]
 
 // Data extractors
 let name =
@@ -71,24 +56,45 @@ type Pkg =
         downloads: string
         project: string
         owners: string list
+        url: string
     }
 
 // Initiliaze a scraper
 let scraper = Scraper<Pkg>(extractors)
+
+// Target urls
+let urls =
+    [
+        "http://www.nuget.org/packages/WebSharper/"
+        "http://www.nuget.org/packages/FSharp.Data.Toolbox.Twitter/"
+        "http://www.nuget.org/packages/R.NET.Community.FSharp/"
+        "http://www.nuget.org/packages/FSharp.Data/"
+        "http://www.nuget.org/packages/FsLab/"
+        "http://www.nuget.org/packages/XPlot.GoogleCharts/"
+        "http://www.nuget.org/packages/XTract/"
+        "http://www.nuget.org/packages/PerfUtil/"
+        "http://www.nuget.org/packages/Deedle/"
+        "http://www.nuget.org/packages/Paket/"
+    ]
 
 let url = urls.[0]
 
 // Scrape a single URL
 scraper.Scrape url
 
-// Handle URL download yourself then scrape the HTML code
+// Handle HTTP requests yourself then scrape the HTML code
 let html =
     Http.get url
     |> Option.get
 
-scraper.Scrape html
+scraper.ScrapeHtml html url
 
-// Scrape the urls list
+// Add a pipeline if you want to further process
+// the scraped data or may be store it in a database
+scraper.WithPipeline (fun pkg ->
+    scraper.Log <| sprintf "Storing %s in database" pkg.name)
+
+// Scrape multiple urls
 let doneAsync = async {printfn "Done!"}
 scraper.ThrottleScrape urls doneAsync
 
@@ -101,7 +107,7 @@ scraper.JsonData
 // Data as data frame
 scraper.DataFrame
 
-// Save as Excel
+// Save an Excel workbook
 open System
 open System.IO
 

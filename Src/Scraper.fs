@@ -2,6 +2,7 @@
 module XTract.Scraper
 
 open System.Collections.Concurrent
+open System.Collections.Generic
 open System
 open Newtonsoft.Json
 open Deedle
@@ -14,10 +15,23 @@ open Extraction
 open Helpers
 
 type Scraper<'T when 'T : equality>(extractors) =
-    let dataStore = ConcurrentBag<Source * 'T>()
+    let dataStore = HashSet<'T>()
     let failedRequests = ConcurrentQueue<string>()
     let log = ConcurrentQueue<string>()
     let mutable loggingEnabled = true
+    let mutable pipelineFunc = fun (record:'T) -> ()
+
+    let pipeline =
+        MailboxProcessor.Start(fun inbox ->
+            let rec loop() =
+                async {
+                    let! msg = inbox.Receive()
+                    dataStore.Add msg |> ignore
+                    pipelineFunc msg
+                    return! loop()
+                }
+            loop()
+        )
 
     let logger =
         MailboxProcessor.Start(fun inbox ->
@@ -35,6 +49,8 @@ type Scraper<'T when 'T : equality>(extractors) =
             loop()
         )
     
+    member __.WithPipeline f = pipelineFunc <- f
+
     /// Posts a new log message to the scraper's logging agent.
     member __.Log msg = logger.Post msg
 
@@ -45,56 +61,94 @@ type Scraper<'T when 'T : equality>(extractors) =
     member __.WithLogging enabled = loggingEnabled <- enabled
 
     /// Scrapes a single data item from the specified URL or HTML code.
-    member __.Scrape input =
-        match input with
-        | Utils.Html ->
-            logger.Post "Scraping data from HTML code"
-            let record = Utils.scrape<'T> input extractors
-            match record with
-            | None -> None
-            | Some x ->
-                dataStore.Add(Html, x)
-                record
-        | Utils.Url ->
-            logger.Post <| "Scraping data from " + input
-            let html = Http.get input
+    member __.Scrape url =
+//        match input with
+//        | Utils.Html ->
+//            logger.Post "Scraping data from HTML code"
+//            let record = Utils.scrape<'T> input extractors
+//            match record with
+//            | None -> None
+//            | Some x ->
+//                dataStore.Add(Html, x)
+//                record
+//        | Utils.Url ->
+            logger.Post <| "[Info] Scraping " + url
+            let html = Http.get url
             match html with
             | None ->
-                failedRequests.Enqueue input
+                failedRequests.Enqueue url
                 None
             | Some html ->
-                let record = Utils.scrape<'T> html extractors
+                let record = Utils.scrape<'T> html extractors url
                 match record with
                 | None -> None
                 | Some x ->
-                    dataStore.Add(Url input, x)
+                    pipeline.Post x
                     record
 
-    /// Scrapes all the data items from the specified URL or HTML code.
-    member __.ScrapeAll input = 
-        match input with
-        | Utils.Html ->
-            logger.Post <| "Scraping data from HTML code"                
-            let records = Utils.scrapeAll<'T> input extractors
-            match records with
+    /// Scrapes a single data item from the specified URL or HTML code.
+    member __.ScrapeHtml html url =
+//        match input with
+//        | Utils.Html ->
+            logger.Post <| "[Info] Scraping " + url
+            let record = Utils.scrape<'T> html extractors url
+            match record with
             | None -> None
-            | Some lst ->
-                lst |> List.iter (fun x -> dataStore.Add(Html, x))
-                records
-        | Utils.Url ->
-            logger.Post <| "Scraping data from " + input
-            let html = Http.get input
+            | Some x ->
+                pipeline.Post x
+                record
+//        | Utils.Url ->
+//            logger.Post <| "Scraping data from " + input
+//            let html = Http.get input
+//            match html with
+//            | None ->
+//                failedRequests.Enqueue input
+//                None
+//            | Some html ->
+//                let record = Utils.scrape<'T> html extractors
+//                match record with
+//                | None -> None
+//                | Some x ->
+//                    dataStore.Add(Url input, x)
+//                    record
+
+    /// Scrapes all the data items from the specified URL or HTML code.
+    member __.ScrapeAll url = 
+//        match input with
+//        | Utils.Html ->
+//            logger.Post <| "Scraping data from HTML code"                
+//            let records = Utils.scrapeAll<'T> input extractors
+//            match records with
+//            | None -> None
+//            | Some lst ->
+//                lst |> List.iter (fun x -> dataStore.Add(Html, x))
+//                records
+//        | Utils.Url ->
+            logger.Post <| "[Info] Scraping " + url
+            let html = Http.get url
             match html with
             | None ->
-                failedRequests.Enqueue input
+                failedRequests.Enqueue url
                 None
             | Some html ->
-                let records = Utils.scrapeAll<'T> html extractors
+                let records = Utils.scrapeAll<'T> html extractors url
                 match records with
                 | None -> None
                 | Some lst ->
-                    lst |> List.iter (fun x -> dataStore.Add(Url input, x))
+                    lst |> List.iter pipeline.Post
                     records
+
+    /// Scrapes all the data items from the specified URL or HTML code.
+    member __.ScrapeAllHtml html url = 
+//        match input with
+//        | Utils.Html ->
+            logger.Post <| "[Info] Scraping " + url                
+            let records = Utils.scrapeAll<'T> html extractors url
+            match records with
+            | None -> None
+            | Some lst ->
+                lst |> List.iter pipeline.Post
+                records
 
     /// Throttles scraping a single data item from the specified URLs
     /// by sending 5 concurrent requests and executes the async computation
@@ -110,10 +164,10 @@ type Scraper<'T when 'T : equality>(extractors) =
                     | None ->
                         failedRequests.Enqueue x
                     | Some html ->
-                        let record = Utils.scrape<'T> html extractors
+                        let record = Utils.scrape<'T> html extractors x
                         match record with
                         | None -> ()
-                        | Some r -> dataStore.Add(Url x, r)
+                        | Some r -> pipeline.Post r
                 }                
             )
         Throttler.throttle asyncs 5 doneAsync
@@ -131,11 +185,11 @@ type Scraper<'T when 'T : equality>(extractors) =
                     | None ->
                         failedRequests.Enqueue x
                     | Some html ->
-                        let records = Utils.scrapeAll<'T> html extractors
+                        let records = Utils.scrapeAll<'T> html extractors x
                         match records with
                         | None -> ()
                         | Some lst ->
-                            lst |> List.iter (fun r -> dataStore.Add(Url x, r))
+                            lst |> List.iter pipeline.Post
                 }                
             )
         Throttler.throttle asyncs 5 doneAsync
@@ -143,7 +197,6 @@ type Scraper<'T when 'T : equality>(extractors) =
     /// Returns the data stored so far by the scraper.
     member __.Data =
         dataStore
-        |> Seq.distinctBy snd
         |> Seq.toArray
 
     /// Returns the urls that scraper failed to download.
@@ -156,20 +209,18 @@ type Scraper<'T when 'T : equality>(extractors) =
 
     /// Returns the data stored so far by the scraper in JSON format.
     member __.JsonData =
-        let records = dataStore |> Seq.map snd
-        JsonConvert.SerializeObject(records, Formatting.Indented)
+        JsonConvert.SerializeObject(dataStore, Formatting.Indented)
 
     /// Returns the data stored so far by the scraper as a Deedle data frame.
     member __.DataFrame =
-        let records = dataStore |> Seq.map snd        
-        Frame.ofRecords records
+        Frame.ofRecords dataStore
 
     /// Saves the data stored by the scraper in a CSV file.
     member __.SaveCsv(path) =
         let headers =
             FSharpType.GetRecordFields typeof<'T>
             |> Array.map (fun x -> x.Name)
-            |> fun x -> Array.append x [|"Source"|]
+//            |> fun x -> Array.append x [|"Source"|]
         let sw = File.CreateText(path)
         let csv = new CsvWriter(sw)
         headers
@@ -192,10 +243,10 @@ type Scraper<'T when 'T : equality>(extractors) =
         let headers =
             FSharpType.GetRecordFields typeof<'T>
             |> Array.map (fun x -> x.Name)
-        let columnsCount = Array.length headers + 1
+        let columnsCount = Array.length headers
         let rangeString = String.concat "" ["A1:"; string (char (columnsCount + 64)) + "1"]
         let rng = XlRange.get worksheet rangeString
-        Array.toRange rng (Array.append headers [|"Source"|])
+        Array.toRange rng headers
         dataStore
         |> Seq.iteri (fun idx x ->
             let idxString = string <| idx + 2

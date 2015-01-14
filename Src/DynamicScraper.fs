@@ -2,6 +2,7 @@
 module XTract.DynamicScraper
 
 open System.Collections.Concurrent
+open System.Collections.Generic
 open System
 open Newtonsoft.Json
 open Deedle
@@ -17,10 +18,23 @@ open Crawler
 type DynamicScraper<'T when 'T : equality>(extractors, ?Browser, ?Gate) =
     let browser = defaultArg Browser Phantom
     let gate = defaultArg Gate 5
-    let dataStore = ConcurrentBag<Source * 'T>()
+    let dataStore = HashSet<'T>()
     let failedRequests = ConcurrentQueue<string>()
     let log = ConcurrentQueue<string>()
     let mutable loggingEnabled = true
+    let mutable pipelineFunc = fun (record:'T) -> ()
+
+    let pipeline =
+        MailboxProcessor.Start(fun inbox ->
+            let rec loop() =
+                async {
+                    let! msg = inbox.Receive()
+                    dataStore.Add msg |> ignore
+                    pipelineFunc msg
+                    return! loop()
+                }
+            loop()
+        )
     
     let crawler = DynamicCrawler(browser, gate)
 
@@ -41,18 +55,20 @@ type DynamicScraper<'T when 'T : equality>(extractors, ?Browser, ?Gate) =
         )
 
     let scrape html url =
-        logger.Post <| "Scraping " + url
-        let record = Utils.scrape<'T> html extractors
+        logger.Post <| "[Info] Scraping " + url
+        let record = Utils.scrape<'T> html extractors url
         match record with
         | None -> ()
-        | Some x -> dataStore.Add(Url url, x)
+        | Some x -> pipeline.Post x
 
     let scrapeAll html url =
         logger.Post <| "Scraping " + url
-        let records = Utils.scrapeAll<'T> html extractors
+        let records = Utils.scrapeAll<'T> html extractors url
         match records with
         | None -> ()
-        | Some lst -> lst |> List.iter (fun x -> dataStore.Add(Url url, x))
+        | Some lst -> lst |> List.iter pipeline.Post
+
+    member __.WithPipeline f = pipelineFunc <- f
     
     /// Loads the specified URL.
     member __.Get url = crawler.Get url
@@ -94,7 +110,6 @@ type DynamicScraper<'T when 'T : equality>(extractors, ?Browser, ?Gate) =
     /// Returns the data stored so far by the scraper.
     member __.Data =
         dataStore
-        |> Seq.distinctBy snd
         |> Seq.toArray
 
     /// Returns the urls that scraper failed to download.
@@ -117,7 +132,7 @@ type DynamicScraper<'T when 'T : equality>(extractors, ?Browser, ?Gate) =
         let headers =
             FSharpType.GetRecordFields typeof<'T>
             |> Array.map (fun x -> x.Name)
-            |> fun x -> Array.append x [|"Source"|]
+//            |> fun x -> Array.append x [|"Source"|]
         let sw = File.CreateText(path)
         let csv = new CsvWriter(sw)
         headers
@@ -140,10 +155,10 @@ type DynamicScraper<'T when 'T : equality>(extractors, ?Browser, ?Gate) =
         let headers =
             FSharpType.GetRecordFields typeof<'T>
             |> Array.map (fun x -> x.Name)
-        let columnsCount = Array.length headers + 1
+        let columnsCount = Array.length headers
         let rangeString = String.concat "" ["A1:"; string (char (columnsCount + 64)) + "1"]
         let rng = XlRange.get worksheet rangeString
-        Array.toRange rng (Array.append headers [|"Source"|])
+        Array.toRange rng headers
         dataStore
         |> Seq.iteri (fun idx x ->
             let idxString = string <| idx + 2

@@ -18,16 +18,29 @@ open Crawler
 open OpenQA.Selenium.PhantomJS
 open OpenQA.Selenium.Remote
 
-type SinglePageDynamicScraper<'T when 'T : equality>(extractors, ?Browser) =
+type SingleBrowserDynamicScraper<'T when 'T : equality>(extractors, ?Browser) =
     let browser = defaultArg Browser Phantom
     let driver =
         match browser with
             | Chrome -> new ChromeDriver(XTractSettings.chromeDriverDirectory) :> RemoteWebDriver
             | Phantom -> new PhantomJSDriver(XTractSettings.phantomDriverDirectory) :> RemoteWebDriver
-    let dataStore = ConcurrentBag<Source * 'T>()
+    let dataStore = ConcurrentBag<'T>()
     let failedRequests = ConcurrentQueue<string>()
     let log = ConcurrentQueue<string>()
     let mutable loggingEnabled = true
+    let mutable pipelineFunc = fun (record:'T) -> ()
+
+    let pipeline =
+        MailboxProcessor.Start(fun inbox ->
+            let rec loop() =
+                async {
+                    let! msg = inbox.Receive()
+                    dataStore.Add msg
+                    pipelineFunc msg
+                    return! loop()
+                }
+            loop()
+        )
 
     let rec waitComplete() =
         let state = driver.ExecuteScript("return document.readyState;").ToString()
@@ -51,6 +64,8 @@ type SinglePageDynamicScraper<'T when 'T : equality>(extractors, ?Browser) =
             loop()
         )
     
+    member __.WithPipeline f = pipelineFunc <- f
+
     /// Loads the specified URL.
     member __.Get url =
         driver.Url <- url
@@ -95,11 +110,11 @@ type SinglePageDynamicScraper<'T when 'T : equality>(extractors, ?Browser) =
         let url = driver.Url
         logger.Post <| "Scraping data from " + url
         let html = driver.PageSource
-        let record = Utils.scrape<'T> html extractors
+        let record = Utils.scrape<'T> html extractors url
         match record with
         | None -> None
         | Some x ->
-            dataStore.Add(Url url, x)
+            pipeline.Post x
             record
 
     /// Scrapes all the data items from the specified URL or HTML code.    
@@ -107,17 +122,16 @@ type SinglePageDynamicScraper<'T when 'T : equality>(extractors, ?Browser) =
         let url = driver.Url
         logger.Post <| "Scraping data from " + url
         let html = driver.PageSource
-        let records = Utils.scrapeAll<'T> html extractors
+        let records = Utils.scrapeAll<'T> html extractors url
         match records with
         | None -> None
         | Some lst ->
-            lst |> List.iter (fun x -> dataStore.Add(Url url, x))
+            lst |> List.iter pipeline.Post
             records
 
     /// Returns the data stored so far by the scraper.
     member __.Data =
         dataStore
-        |> Seq.distinctBy snd
         |> Seq.toArray
 
     /// Returns the urls that scraper failed to download.
@@ -140,7 +154,7 @@ type SinglePageDynamicScraper<'T when 'T : equality>(extractors, ?Browser) =
         let headers =
             FSharpType.GetRecordFields typeof<'T>
             |> Array.map (fun x -> x.Name)
-            |> fun x -> Array.append x [|"Source"|]
+//            |> fun x -> Array.append x [|"Source"|]
         let sw = File.CreateText(path)
         let csv = new CsvWriter(sw)
         headers
@@ -163,10 +177,10 @@ type SinglePageDynamicScraper<'T when 'T : equality>(extractors, ?Browser) =
         let headers =
             FSharpType.GetRecordFields typeof<'T>
             |> Array.map (fun x -> x.Name)
-        let columnsCount = Array.length headers + 1
+        let columnsCount = Array.length headers
         let rangeString = String.concat "" ["A1:"; string (char (columnsCount + 64)) + "1"]
         let rng = XlRange.get worksheet rangeString
-        Array.toRange rng (Array.append headers [|"Source"|])
+        Array.toRange rng headers
         dataStore
         |> Seq.iteri (fun idx x ->
             let idxString = string <| idx + 2

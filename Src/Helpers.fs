@@ -253,24 +253,25 @@ module Utils =
         document.LoadHtml html
         document.DocumentNode
 
-    let makeRecord<'T> (dictionary : Dictionary<string, obj>) =
+    let makeRecord<'T> (url:string) (dictionary : Dictionary<string, obj>) =
         let values =
             dictionary.Values
             |> Seq.toArray
-        FSharpValue.MakeRecord(typeof<'T>, values) :?> 'T
+        let valuesWithUrl = Array.append values [|url|]
+        FSharpValue.MakeRecord(typeof<'T>, valuesWithUrl) :?> 'T
 
-    let scrape<'T> html extractors =
+    let scrape<'T> html extractors url =
         let root = htmlRoot html
         let record =
             Scrapers.scrapeSingle extractors root
-            |> makeRecord<'T>
+            |> makeRecord<'T> url
         Some record
 
-    let scrapeAll<'T> html extractors =
+    let scrapeAll<'T> html extractors url =
         let root = htmlRoot html
         Scrapers.scrapeAll extractors root
         |> List.map (fun x ->
-            let record = makeRecord<'T> x
+            let record = makeRecord<'T> url x
             record)
         |> Some
 
@@ -279,11 +280,11 @@ module Utils =
         |> List.map (fun x -> x.ToString())
         |> String.concat "; "
 
-    let fields (source, record) =
-        let source' =
-            match source with
-            | Source.Html -> [|"HTML Code"|]
-            | Source.Url x -> [|x|]
+    let fields record =
+//        let source' =
+//            match source with
+//            | Source.Html -> [|"HTML Code"|]
+//            | Source.Url x -> [|x|]
         FSharpValue.GetRecordFields record
         |> Array.map (fun x ->
             match x with
@@ -296,4 +297,4 @@ module Utils =
                 |> String.concat "\n"
             | _ -> string x
         )
-        |> fun x -> Array.append x source'
+//        |> fun x -> Array.append x source'

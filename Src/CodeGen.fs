@@ -23,6 +23,7 @@ let recordCode extractors =
             "type RecordName ="
             "    {"
             x
+            "        ItemUrl: string"
             "    }"
         ]
     |> String.concat "\n"

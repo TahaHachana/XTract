@@ -1,4 +1,4 @@
-﻿#load @"../Src/packages/XTract.0.3.5/XTractBootstrap.fsx"
+﻿#load @"../Src/packages/XTract.0.3.6/XTractBootstrap.fsx"
 
 open XTract
 
@@ -93,7 +93,6 @@ scraper.DataFrame
 // Save as an Excel workbook
 open System
 open System.IO
-open XTract.Helpers
 
 let desktop = Environment.GetFolderPath Environment.SpecialFolder.Desktop
 let path = Path.Combine(desktop, "Data.xlsx")
@@ -138,7 +137,7 @@ let scraper' = Scraper<PkgListing>(extractors')
 
 let url' = "http://www.nuget.org/profiles/Taha"
 
-scraper'.ScrapeAll url
+scraper'.ScrapeAll url'
 
 let html' =
     Http.get url'
@@ -146,41 +145,41 @@ let html' =
 
 scraper'.ScrapeAllHtml html' url'
 
-open XTract.Helpers
-open XTract.Helpers.Scrapers
-open XTract.Html
-
-Utils.scrapeAll<PkgListing> html' extractors' url'
+scraper'.SaveExcel path
 
 
-let root = XTract.Helpers.Utils.htmlRoot html'
-Scrapers.scrapeAll extractors' root
+let n =
+    Css "div:nth-child(5).anchor > div:nth-child(2) > div.row.data-row > div.col-md-5 > div:nth-child(1).media > div:nth-child(2).media-body > h4:nth-child(1).media-heading > a:nth-child(1)"
+    |> Extractor.New
 
+let dlds =
+    Css "div:nth-child(5).anchor > div:nth-child(2) > div.row.data-row > div.col-md-5 > div:nth-child(1).media > div:nth-child(2).media-body > p:nth-child(3) > span:nth-child(1).badge"
+    |> Extractor.New
 
-let selections enums =
-    let rec f acc idx =
-//        try
-            let lst =
-                enums
-                |> List.map (fun x -> selection' x idx)
-            let test = lst |> List.forall (fun (_, x) -> x = SelectionFailed)
-            match test with
-            | false -> f (acc @ [lst]) (idx + 1)
-            | true -> acc
-//        with _ -> acc
-    f [] 0
+let tags =
+    Css "div:nth-child(5).anchor > div:nth-child(2) > div.row.data-row > div.col-md-5 > div:nth-child(1).media > div:nth-child(2).media-body > div:nth-child(4) > span.label.label-info"
+    |> Extractor.New
+    |> Extractor.WithMany true FirstParent
+    |> Extractor.WithAttributes ["text"; "class"]
 
-open System.Collections.Generic
+let extractors'' = [n; dlds; tags]
 
-extractors'
-|> List.map (fun x -> selection root x)
-|> selections
-|> List.fold (fun state lst ->
-    let dictionary = Dictionary<string, obj>()
-    lst
-    |> List.iter (fun (extractor, selection) ->
-        scrape selection extractor dictionary
-    )
-    state @ [dictionary]
-) []
+let code' = CodeGen.recordCode extractors''
 
+type FSHPkg =
+    {
+        Name: string
+        Downloads: string
+        Tags: Map<string, string> list
+        ItemUrl: string
+    }
+
+let scraper'' = Scraper<FSHPkg> extractors''
+
+scraper''.ScrapeAll "http://fsharp-hub.apphb.com/"
+
+let html'' = Http.get "http://fsharp-hub.apphb.com/" |> Option.get
+
+scraper''.ScrapeAllHtml html'' "http://fsharp-hub.apphb.com/"
+
+scraper''.SaveExcel path

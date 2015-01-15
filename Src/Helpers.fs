@@ -296,7 +296,7 @@ module Utils =
                 lst
                 |> List.map Map.toList
                 |> List.map lstString
-                |> String.concat "\n"
+                |> String.concat "; "
             | _ -> string x
         )
 //        |> fun x -> Array.append x source'

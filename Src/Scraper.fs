@@ -19,7 +19,7 @@ type Scraper<'T when 'T : equality>(extractors) =
     let failedRequests = ConcurrentQueue<string>()
     let log = ConcurrentQueue<string>()
     let mutable loggingEnabled = true
-    let mutable pipelineFunc = fun (record:'T) -> ()
+    let mutable pipelineFunc = fun _ -> ()
 
     let pipeline =
         MailboxProcessor.Start(fun inbox ->
@@ -160,7 +160,7 @@ type Scraper<'T when 'T : equality>(extractors) =
             urls
             |> Seq.map (fun x ->
                 async {
-                    logger.Post <| "Scraping " + x
+                    logger.Post <| "[Info] Scraping " + x
                     let! html = Http.getAsync x
                     match html with
                     | None ->

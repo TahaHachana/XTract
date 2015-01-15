@@ -23,7 +23,7 @@ module Helpers =
         | Url of string option
         | Start of AsyncReplyChannel<unit>
         | Pause
-        | CrawlerTask of Task
+        | BrowserTask of Task
 
     let rec waitComplete (driver:#RemoteWebDriver) =
         let state = driver.ExecuteScript("return document.readyState;").ToString()
@@ -45,11 +45,10 @@ type DynamicCrawler(?Browser, ?Gate) as this =
     let gate = defaultArg Gate 5
 
     let supervisor =
-
-        MailboxProcessor.Start(fun x -> async {
+        MailboxProcessor.Start(fun inbox -> async {
             let rec loop run =
                 async {
-                    let! msg = x.Receive()
+                    let! msg = inbox.Receive()
                     match msg with
                     | Start channel ->
                         this.repl <- channel
@@ -66,22 +65,23 @@ type DynamicCrawler(?Browser, ?Gate) as this =
                             | true, str ->
                                 mailbox.Post <| Url(Some str)
                                 return! loop run 
-
                             | _ -> mailbox.Post Pause
                     | Url _ -> failwith "Unexpected URL message!"
-                    | _ ->    printfn "Supervisor is done."
-                              (x :> IDisposable).Dispose()
+                    | BrowserTask _ -> failwith "Unexpected BrowserTask message!"
+                    | Stop ->
+                        printfn "Supervisor is done."
+                        (inbox :> IDisposable).Dispose()
                 }
             do! loop false })
   
     let replier =
-        MailboxProcessor<Message>.Start(fun y ->
+        MailboxProcessor<Message>.Start(fun inbox ->
             let rec loop count =
                 async {
-                    let! msg = y.Receive()
+                    let! msg = inbox.Receive()
                     match msg with
                     | Stop ->
-                        (y :> IDisposable).Dispose()
+                        (inbox :> IDisposable).Dispose()
                         printfn "URL collector is done."
                     | _ ->
                         match count with
@@ -99,12 +99,13 @@ type DynamicCrawler(?Browser, ?Gate) as this =
             match driver with
             | Chrome -> new ChromeDriver(XTractSettings.chromeDriverDirectory) :> RemoteWebDriver
             | Phantom -> new PhantomJSDriver(XTractSettings.phantomDriverDirectory) :> RemoteWebDriver
+        let load (url:string) = browser.Navigate().GoToUrl url
         MailboxProcessor.Start(fun inbox ->
             let rec loop() =
                 async {
                     let! msg = inbox.Receive()
                     match msg with
-                    | CrawlerTask t ->
+                    | BrowserTask t ->
                         match t with
                         | CssClick selector ->
                             browser.FindElementByCssSelector(selector).Click()
@@ -115,7 +116,7 @@ type DynamicCrawler(?Browser, ?Gate) as this =
                             supervisor.Post(Mailbox(inbox))
                             return! loop()
                         | Get url ->
-                            browser.Url <- url
+                            load url
                             waitComplete browser
                             supervisor.Post(Mailbox(inbox))
                             return! loop()
@@ -137,13 +138,13 @@ type DynamicCrawler(?Browser, ?Gate) as this =
                     | Url x ->
                         match x with
                         | Some url ->
-                                browser.Url <- url
-                                waitComplete browser
-                                printfn "%s crawled by agent %d." url id
-                                let html = browser.PageSource
-                                this.scrapeFunc html url
-                                supervisor.Post(Mailbox(inbox))
-                                return! loop()
+                            load url
+                            waitComplete browser
+                            printfn "%s crawled by agent %d." url id
+                            let html = browser.PageSource
+                            this.scrapeFunc html url
+                            supervisor.Post(Mailbox(inbox))
+                            return! loop()
                         | None -> supervisor.Post(Mailbox(inbox))
                                   return! loop()
                     | Pause ->
@@ -176,25 +177,25 @@ type DynamicCrawler(?Browser, ?Gate) as this =
         supervisor.Post Stop
 
     member __.CssClick(cssSelector) =
-        crawlers |> List.iter (fun ag -> ag.Post (CrawlerTask <| CssClick cssSelector))
+        crawlers |> List.iter (fun ag -> ag.Post (BrowserTask <| CssClick cssSelector))
         supervisor.PostAndAsyncReply(Start)
 
     member __.XpathClick(xpath) =
-        crawlers |> List.iter (fun ag -> ag.Post (CrawlerTask <| XpathClick xpath))
+        crawlers |> List.iter (fun ag -> ag.Post (BrowserTask <| XpathClick xpath))
         supervisor.PostAndAsyncReply(Start)
 
     member __.Get(url) =
-        crawlers |> List.iter (fun ag -> ag.Post (CrawlerTask <| Get url))
+        crawlers |> List.iter (fun ag -> ag.Post (BrowserTask <| Get url))
         supervisor.PostAndAsyncReply(Start)
 
     member __.CssSendKeys cssSelector text =
-        crawlers |> List.iter (fun ag -> ag.Post (CrawlerTask <| CssSendKeys(cssSelector, text)))
+        crawlers |> List.iter (fun ag -> ag.Post (BrowserTask <| CssSendKeys(cssSelector, text)))
         supervisor.PostAndAsyncReply(Start)
 
     member __.XpathSendKeys xpath text =
-        crawlers |> List.iter (fun ag -> ag.Post (CrawlerTask <| XpathSendKeys(xpath, text)))
+        crawlers |> List.iter (fun ag -> ag.Post (BrowserTask <| XpathSendKeys(xpath, text)))
         supervisor.PostAndAsyncReply(Start)
 
     member __.Scrape f =
-        crawlers |> List.iter (fun ag -> ag.Post (CrawlerTask <| Scrape f))
+        crawlers |> List.iter (fun ag -> ag.Post (BrowserTask <| Scrape f))
         supervisor.PostAndAsyncReply(Start)

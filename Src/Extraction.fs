@@ -24,7 +24,7 @@ type Extractor =
     static member New selector = 
         {
             selector = selector
-            pattern = "^()(.*?)()$"
+            pattern = "(?s)^()(.+?)()$"
             attributes = [ "text" ]
             many = false
             groupBy = None

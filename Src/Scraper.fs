@@ -26,8 +26,10 @@ type Scraper<'T when 'T : equality>(extractors) =
             let rec loop() =
                 async {
                     let! msg = inbox.Receive()
-                    dataStore.Add msg |> ignore
-                    pipelineFunc msg
+                    dataStore.Add msg
+                    |> function
+                    | false -> ()
+                    | true -> pipelineFunc msg
                     return! loop()
                 }
             loop()

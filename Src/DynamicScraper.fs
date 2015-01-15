@@ -19,7 +19,7 @@ type DynamicScraper<'T when 'T : equality>(extractors, ?Browser, ?Gate) =
     let browser = defaultArg Browser Phantom
     let gate = defaultArg Gate 5
     let dataStore = HashSet<'T>()
-    let failedRequests = ConcurrentQueue<string>()
+//    let failedRequests = ConcurrentQueue<string>()
     let log = ConcurrentQueue<string>()
     let mutable loggingEnabled = true
     let mutable pipelineFunc = fun (record:'T) -> ()
@@ -29,8 +29,10 @@ type DynamicScraper<'T when 'T : equality>(extractors, ?Browser, ?Gate) =
             let rec loop() =
                 async {
                     let! msg = inbox.Receive()
-                    dataStore.Add msg |> ignore
-                    pipelineFunc msg
+                    dataStore.Add msg
+                    |> function
+                    | false -> ()
+                    | true -> pipelineFunc msg
                     return! loop()
                 }
             loop()
@@ -112,13 +114,13 @@ type DynamicScraper<'T when 'T : equality>(extractors, ?Browser, ?Gate) =
         dataStore
         |> Seq.toArray
 
-    /// Returns the urls that scraper failed to download.
-    member __.FailedRequests = failedRequests.ToArray()
-
-    /// Stores a failed HTTP request, use this method when
-    /// handling HTTP requests by yourself and you want to
-    /// track errors.
-    member __.StoreFailedRequest url = failedRequests.Enqueue url
+//    /// Returns the urls that scraper failed to download.
+//    member __.FailedRequests = failedRequests.ToArray()
+//
+//    /// Stores a failed HTTP request, use this method when
+//    /// handling HTTP requests by yourself and you want to
+//    /// track errors.
+//    member __.StoreFailedRequest url = failedRequests.Enqueue url
 
     /// Returns the data stored so far by the scraper in JSON format.
     member __.JsonData =

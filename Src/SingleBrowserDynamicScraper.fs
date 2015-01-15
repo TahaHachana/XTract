@@ -2,6 +2,7 @@
 module XTract.SinglePageDynamicScraper
 
 open System.Collections.Concurrent
+open System.Collections.Generic
 open System
 open Newtonsoft.Json
 open Deedle
@@ -24,8 +25,9 @@ type SingleBrowserDynamicScraper<'T when 'T : equality>(extractors, ?Browser) =
         match browser with
             | Chrome -> new ChromeDriver(XTractSettings.chromeDriverDirectory) :> RemoteWebDriver
             | Phantom -> new PhantomJSDriver(XTractSettings.phantomDriverDirectory) :> RemoteWebDriver
-    let dataStore = ConcurrentBag<'T>()
-    let failedRequests = ConcurrentQueue<string>()
+    let load (url:string) = driver.Navigate().GoToUrl url
+    let dataStore = HashSet<'T>()
+//    let failedRequests = ConcurrentQueue<string>()
     let log = ConcurrentQueue<string>()
     let mutable loggingEnabled = true
     let mutable pipelineFunc = fun (record:'T) -> ()
@@ -36,7 +38,9 @@ type SingleBrowserDynamicScraper<'T when 'T : equality>(extractors, ?Browser) =
                 async {
                     let! msg = inbox.Receive()
                     dataStore.Add msg
-                    pipelineFunc msg
+                    |> function
+                    | false -> ()
+                    | true -> pipelineFunc msg
                     return! loop()
                 }
             loop()
@@ -67,8 +71,8 @@ type SingleBrowserDynamicScraper<'T when 'T : equality>(extractors, ?Browser) =
     member __.WithPipeline f = pipelineFunc <- f
 
     /// Loads the specified URL.
-    member __.Get url =
-        driver.Url <- url
+    member __.Get (url:string) =
+        load url
         waitComplete()
 
     /// Selects an element and types the specified text into it.
@@ -134,14 +138,14 @@ type SingleBrowserDynamicScraper<'T when 'T : equality>(extractors, ?Browser) =
         dataStore
         |> Seq.toArray
 
-    /// Returns the urls that scraper failed to download.
-    member __.FailedRequests = failedRequests.ToArray()
+//    /// Returns the urls that scraper failed to download.
+//    member __.FailedRequests = failedRequests.ToArray()
 
-    /// Stores a failed HTTP request, use this method when
-    /// handling HTTP requests by yourself and you want to
-    /// track errors.
-    member __.StoreFailedRequest url = failedRequests.Enqueue url
-
+//    /// Stores a failed HTTP request, use this method when
+//    /// handling HTTP requests by yourself and you want to
+//    /// track errors.
+//    member __.StoreFailedRequest url = failedRequests.Enqueue url
+//
     /// Returns the data stored so far by the scraper in JSON format.
     member __.JsonData =
         JsonConvert.SerializeObject(dataStore, Formatting.Indented)

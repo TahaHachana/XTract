@@ -1,4 +1,4 @@
-﻿#load @"../Src/packages/XTract.0.3.4/XTractBootstrap.fsx"
+﻿#load @"../Src/packages/XTract.0.3.5/XTractBootstrap.fsx"
 
 open XTract
 
@@ -90,10 +90,97 @@ scraper.JsonData
 // Data as data frame
 scraper.DataFrame
 
-// Save an Excel workbook
+// Save as an Excel workbook
 open System
 open System.IO
+open XTract.Helpers
 
 let desktop = Environment.GetFolderPath Environment.SpecialFolder.Desktop
 let path = Path.Combine(desktop, "Data.xlsx")
 scraper.SaveExcel path
+
+// Failed HTTP requests
+scraper.FailedRequests
+
+// Log
+scraper.LogData
+
+// Save as CSV
+let path' = Path.Combine(desktop, "Data.csv")
+scraper.SaveCsv path'
+
+
+//==================================
+// Many items per page
+
+let pkgName =
+    Css "li > section > div > h1 > a"
+    |> Extractor.New
+    |> Extractor.WithAttributes ["text"; "href"]
+
+let pkgDescription =
+    Css "ul > li > section > div > p"
+    |> Extractor.New
+    |> Extractor.WithPattern "(?s)^()(.+?)()$"
+
+let extractors' = [pkgName; pkgDescription]
+
+let code = CodeGen.recordCode  extractors'
+
+type PkgListing =
+    {
+        Details: Map<string, string>
+        Description: string
+        ItemUrl: string
+    }
+
+let scraper' = Scraper<PkgListing>(extractors')
+
+let url' = "http://www.nuget.org/profiles/Taha"
+
+scraper'.ScrapeAll url
+
+let html' =
+    Http.get url'
+    |> Option.get
+
+scraper'.ScrapeAllHtml html' url'
+
+open XTract.Helpers
+open XTract.Helpers.Scrapers
+open XTract.Html
+
+Utils.scrapeAll<PkgListing> html' extractors' url'
+
+
+let root = XTract.Helpers.Utils.htmlRoot html'
+Scrapers.scrapeAll extractors' root
+
+
+let selections enums =
+    let rec f acc idx =
+//        try
+            let lst =
+                enums
+                |> List.map (fun x -> selection' x idx)
+            let test = lst |> List.forall (fun (_, x) -> x = SelectionFailed)
+            match test with
+            | false -> f (acc @ [lst]) (idx + 1)
+            | true -> acc
+//        with _ -> acc
+    f [] 0
+
+open System.Collections.Generic
+
+extractors'
+|> List.map (fun x -> selection root x)
+|> selections
+|> List.fold (fun state lst ->
+    let dictionary = Dictionary<string, obj>()
+    lst
+    |> List.iter (fun (extractor, selection) ->
+        scrape selection extractor dictionary
+    )
+    state @ [dictionary]
+) []
+

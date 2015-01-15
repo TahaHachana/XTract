@@ -7,7 +7,7 @@
 #r """../../packages/Selenium.WebDriver.2.44.0/lib/net40/WebDriver.dll"""
 #r """../../packages/SpreadSharp.0.2.79/lib/Net40/SpreadSharp.dll"""
 #load """../../packages/Deedle.1.0.6/Deedle.fsx"""
-#r """../../packages/XTract.0.3.4/Lib/net45/XTract.dll"""
+#r """../../packages/XTract.0.3.6/Lib/net45/XTract.dll"""
 
 open System.IO
 open XTract.Settings

@@ -19,7 +19,7 @@ module Scrapers =
                         let ``match`` = Regex(extractor.pattern).Match(htmlNode.InnerText)
                         match ``match``.Success with
                         | false -> ""
-                        | true -> ``match``.Groups.[2].Value
+                        | true -> ``match``.Groups.[2].Value.Trim()
                     text 
                 | x -> htmlNode.GetAttributeValue(x, "")
             |> WebUtility.HtmlDecode
@@ -43,7 +43,7 @@ module Scrapers =
                                 let ``match`` = Regex(extractor.pattern).Match(htmlNode.InnerText)
                                 match ``match``.Success with
                                 | false -> ""
-                                | true -> ``match``.Groups.[2].Value
+                                | true -> ``match``.Groups.[2].Value.Trim()
                             text 
                         | x -> htmlNode.GetAttributeValue(x, "")
                     |> WebUtility.HtmlDecode
@@ -73,7 +73,7 @@ module Scrapers =
                             let ``match`` = Regex(extractor.pattern).Match(htmlNode.InnerText)
                             match ``match``.Success with
                             | false -> ""
-                            | true -> ``match``.Groups.[2].Value
+                            | true -> ``match``.Groups.[2].Value.Trim()
                         text 
                     | x -> htmlNode.GetAttributeValue(x, "")
                 |> WebUtility.HtmlDecode
@@ -100,8 +100,8 @@ module Scrapers =
                                     let ``match`` = Regex(extractor.pattern).Match(htmlNode.InnerText)
                                     match ``match``.Success with
                                     | false -> ""
-                                    | true -> ``match``.Groups.[2].Value
-                                text 
+                                    | true -> ``match``.Groups.[2].Value.Trim()
+                                text
                             | x -> htmlNode.GetAttributeValue(x, "")
                         |> WebUtility.HtmlDecode
                     map.Add(attr, value)
@@ -210,12 +210,14 @@ module Scrapers =
     
     let selections enums =
         let rec f acc idx =
-            try
-                let lst =
-                    enums
-                    |> List.map (fun x -> selection' x idx)
-                f (acc @ [lst]) (idx + 1)
-            with _ -> acc
+            let lst =
+                enums
+                |> List.map (fun x -> selection' x idx)
+            lst
+            |> List.forall (fun (_, x) -> x = SelectionFailed)
+            |> function
+            | false -> f (acc @ [lst]) (idx + 1)
+            | true -> acc
         f [] 0
 
     let scrapeSelections enums =
@@ -239,14 +241,14 @@ type Source = Html | Url of string
 
 module Utils = 
 
-    let urlRegex =
-        let pattern = "^(ht|f)tp(s?)\:\/\/[0-9a-zA-Z]([-.\w]*[0-9a-zA-Z])*(:(0-9)*)*(\/?)([a-zA-Z0-9\-\.\?\,\'\/\\\+&amp;%\$#_]*)?"
-        Regex(pattern)
+//    let urlRegex =
+//        let pattern = "^(ht|f)tp(s?)\:\/\/[0-9a-zA-Z]([-.\w]*[0-9a-zA-Z])*(:(0-9)*)*(\/?)([a-zA-Z0-9\-\.\?\,\'\/\\\+&amp;%\$#_]*)?"
+//        Regex(pattern)
 
-    let (|Html|Url|) input =
-        match urlRegex.IsMatch(input) with
-        | false -> Html
-        | true -> Url
+//    let (|Html|Url|) input =
+//        match urlRegex.IsMatch(input) with
+//        | false -> Html
+//        | true -> Url
 
     let htmlRoot (html : string) =
         let document = HtmlDocument()

@@ -50,6 +50,7 @@
   <Import Project="$(FSharpTargetsPath)" />
   <ItemGroup>
     <None Include="StaticScraper.fsx" />
+    <None Include="SingleBrowserDynamicScraper.fsx" />
     <Content Include="packages.config" />
     <Content Include="app.config" />
   </ItemGroup>

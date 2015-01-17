@@ -95,7 +95,7 @@ open System
 open System.IO
 
 let desktop = Environment.GetFolderPath Environment.SpecialFolder.Desktop
-let path = Path.Combine(desktop, "Data.xlsx")
+let path = Path.Combine(desktop, "Data1.xlsx")
 scraper.SaveExcel path
 
 // Failed HTTP requests

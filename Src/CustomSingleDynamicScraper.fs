@@ -1,5 +1,5 @@
 ﻿[<AutoOpen>]
-module XTract.SinglePageDynamicScraper
+module XTract.CustomSingleDynamicScraper
 
 open System.Collections.Concurrent
 open System.Collections.Generic
@@ -19,38 +19,42 @@ open Crawler
 open OpenQA.Selenium.PhantomJS
 open OpenQA.Selenium.Remote
 
-type SingleBrowserDynamicScraper<'T when 'T : equality>(extractors, ?Browser) =
+type CustomSingleDynamicScraper<'T when 'T : equality>(?Browser) =
     let browser = defaultArg Browser Phantom
     let driver =
         match browser with
             | Chrome -> new ChromeDriver(XTractSettings.chromeDriverDirectory) :> RemoteWebDriver
             | Phantom -> new PhantomJSDriver(XTractSettings.phantomDriverDirectory) :> RemoteWebDriver
-    let load (url:string) = driver.Navigate().GoToUrl url
-    let dataStore = HashSet<'T>()
-//    let failedRequests = ConcurrentQueue<string>()
-    let log = ConcurrentQueue<string>()
-    let mutable loggingEnabled = true
-    let mutable pipelineFunc = fun (record:'T) -> ()
-
-    let pipeline =
-        MailboxProcessor.Start(fun inbox ->
-            let rec loop() =
-                async {
-                    let! msg = inbox.Receive()
-                    dataStore.Add msg
-                    |> function
-                    | false -> ()
-                    | true -> pipelineFunc msg
-                    return! loop()
-                }
-            loop()
-        )
-
     let rec waitComplete() =
         let state = driver.ExecuteScript("return document.readyState;").ToString()
         match state with
         | "complete" -> ()
-        | _ -> waitComplete()
+        | _ -> waitComplete()    
+    let load (url:string) =
+        try
+            driver.Navigate().GoToUrl url
+            waitComplete()
+            Some driver.PageSource
+        with _ -> None
+
+    let dataStore = HashSet<'T>()
+//    let failedRequests = ConcurrentQueue<string>()
+    let log = ConcurrentQueue<string>()
+    let mutable loggingEnabled = true
+    let mutable pipelineFunc = (fun (record:'T) -> record)
+
+    let pipeline =
+        MailboxProcessor<'T>.Start(fun inbox ->
+            let rec loop() =
+                async {
+                    let! msg = inbox.Receive()
+                    pipelineFunc msg
+                    |> dataStore.Add
+                    |> ignore
+                    return! loop()
+                }
+            loop()
+        )
 
     let logger =
         MailboxProcessor.Start(fun inbox ->
@@ -71,9 +75,7 @@ type SingleBrowserDynamicScraper<'T when 'T : equality>(extractors, ?Browser) =
     member __.WithPipeline f = pipelineFunc <- f
 
     /// Loads the specified URL.
-    member __.Get (url:string) =
-        load url
-        waitComplete()
+    member __.Get (url:string) = load url
 
     /// Selects an element and types the specified text into it.
     member __.SendKeysCss cssSelector text =
@@ -91,6 +93,16 @@ type SingleBrowserDynamicScraper<'T when 'T : equality>(extractors, ?Browser) =
     member __.ClickCss cssSelector =
         driver.FindElementByCssSelector(cssSelector).Click()
         waitComplete()
+
+    member __.CssSelect cssSelector = driver.FindElementByCssSelector(cssSelector)
+
+    member __.CssSelectAll cssSelector = driver.FindElementsByCssSelector(cssSelector)
+
+    member __.XpathSelect xpath = driver.FindElementByXPath xpath
+
+    member __.XpathSelectAll xpath = driver.FindElementsByXPath xpath
+
+    member __.PageSource = driver.PageSource
 
     /// Selects an element and clicks it.
     member __.ClickXpath xpath =
@@ -110,28 +122,78 @@ type SingleBrowserDynamicScraper<'T when 'T : equality>(extractors, ?Browser) =
     member __.WithLogging enabled = loggingEnabled <- enabled
 
     /// Scrapes a single data item from the specified URL or HTML code.
-    member __.Scrape() =
+    member __.Scrape(scrapeFunc) =
         let url = driver.Url
         logger.Post <| "Scraping data from " + url
         let html = driver.PageSource
-        let record = Utils.scrape<'T> html extractors url
+        let record = scrapeFunc html url
         match record with
         | None -> None
         | Some x ->
             pipeline.Post x
             record
 
+    member __.Scrape(url, scrapeFunc) =
+        logger.Post <| "Scraping data from " + url
+        try
+            let html = load url |> Option.get
+            let record = scrapeFunc html url
+            match record with
+            | None -> None
+            | Some x ->
+                pipeline.Post x
+                record
+        with _ ->
+            logger.Post <| "Failed to scrape " + url
+            None
+
+    member __.Scrape(urls, scrapeFunc) =
+        for url in urls do
+            try
+                logger.Post <| "Scraping " + url
+                let html = load url |> Option.get
+                let record = scrapeFunc html url
+                match record with
+                | None -> ()
+                | Some x -> pipeline.Post x
+            with _ -> logger.Post <| "Failed to scrape " + url
+
     /// Scrapes all the data items from the specified URL or HTML code.    
-    member __.ScrapeAll() =
+    member __.ScrapeAll(scrapeFunc) =
         let url = driver.Url
         logger.Post <| "Scraping data from " + url
         let html = driver.PageSource
-        let records = Utils.scrapeAll<'T> html extractors url
+        let records = scrapeFunc html url
         match records with
         | None -> None
         | Some lst ->
             lst |> List.iter pipeline.Post
             records
+
+    member __.ScrapeAll(url, scrapeFunc) =
+        try
+            logger.Post <| "Scraping data from " + url
+            let html = load url |> Option.get
+            let records = scrapeFunc html url
+            match records with
+            | None -> None
+            | Some lst ->
+                lst |> List.iter pipeline.Post
+                records
+        with _ ->
+            logger.Post <| "Failed to scrape " + url
+            None
+
+    member __.ScrapeAll(urls, scrapeFunc) =
+        for url in urls do
+            try
+                logger.Post <| "Scraping data from " + url
+                let html = load url |> Option.get
+                let records = scrapeFunc html url
+                match records with
+                | None -> ()
+                | Some lst -> lst |> List.iter pipeline.Post
+            with _ -> logger.Post <| "Failed to scrape " + url
 
     /// Returns the data stored so far by the scraper.
     member __.Data =

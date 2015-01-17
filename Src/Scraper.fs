@@ -182,6 +182,7 @@ type Scraper<'T when 'T : equality>(extractors) =
             urls
             |> Seq.map (fun x ->
                 async {
+                    logger.Post <| "[Info] Scraping " + x
                     let! html = Http.getAsync x
                     match html with
                     | None ->

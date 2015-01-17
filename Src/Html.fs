@@ -3,13 +3,11 @@
 open Fizzler.Systems.HtmlAgilityPack
 open HtmlAgilityPack
 
-/// Loads a HTML document.
+/// Loads a HTML document and returns its root node.
 let load html =
     let document = HtmlDocument()
     document.LoadHtml html
-
-/// Gets the root node of a document.
-let root (htmlDocument:HtmlDocument) = htmlDocument.DocumentNode 
+    document.DocumentNode
 
 /// Retrieves the first element matching the CSS selector.
 let cssSelect (htmlNode:HtmlNode) cssSelector =

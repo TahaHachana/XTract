@@ -22,17 +22,16 @@ type DynamicScraper<'T when 'T : equality>(extractors, ?Browser, ?Gate) =
 //    let failedRequests = ConcurrentQueue<string>()
     let log = ConcurrentQueue<string>()
     let mutable loggingEnabled = true
-    let mutable pipelineFunc = fun (record:'T) -> ()
+    let mutable pipelineFunc = (fun (record:'T) -> record)
 
     let pipeline =
         MailboxProcessor.Start(fun inbox ->
             let rec loop() =
                 async {
                     let! msg = inbox.Receive()
-                    dataStore.Add msg
-                    |> function
-                    | false -> ()
-                    | true -> pipelineFunc msg
+                    pipelineFunc msg
+                    |> dataStore.Add
+                    |> ignore
                     return! loop()
                 }
             loop()
@@ -72,6 +71,8 @@ type DynamicScraper<'T when 'T : equality>(extractors, ?Browser, ?Gate) =
 
     member __.WithPipeline f = pipelineFunc <- f
     
+    member __.FailedRequests = crawler.FailedRequests
+
     /// Loads the specified URL.
     member __.Get url = crawler.Get url
 
@@ -104,7 +105,6 @@ type DynamicScraper<'T when 'T : equality>(extractors, ?Browser, ?Gate) =
 
     member __.ScrapeAll(urls) = crawler.Crawl(scrapeAll, urls)
 
-    /// Scrapes a single data item from the specified URL or HTML code.
     member __.Scrape() = crawler.Scrape scrape
 
     member __.ScrapeAll() = crawler.Scrape scrapeAll

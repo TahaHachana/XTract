@@ -61,6 +61,7 @@
     <Compile Include="Crawler.fs" />
     <Compile Include="Helpers.fs" />
     <Compile Include="Scraper.fs" />
+    <Compile Include="CustomScraper.fs" />
     <Compile Include="SingleDynamicScraper.fs" />
     <Compile Include="CustomSingleDynamicScraper.fs" />
     <Compile Include="DynamicScraper.fs" />

@@ -43,6 +43,7 @@ type DynamicCrawler(?Browser, ?Gate) as this =
     [<DefaultValue>] val mutable scrapeFunc : string -> string -> unit
     let driver = defaultArg Browser Phantom
     let gate = defaultArg Gate 5
+    let failedRequests = ConcurrentBag<string>()
 
     let supervisor =
         MailboxProcessor.Start(fun inbox -> async {
@@ -99,7 +100,15 @@ type DynamicCrawler(?Browser, ?Gate) as this =
             match driver with
             | Chrome -> new ChromeDriver(XTractSettings.chromeDriverDirectory) :> RemoteWebDriver
             | Phantom -> new PhantomJSDriver(XTractSettings.phantomDriverDirectory) :> RemoteWebDriver
-        let load (url:string) = browser.Navigate().GoToUrl url
+//        let load (url:string) = browser.Navigate().GoToUrl url
+        let load (url:string) =
+            try
+                browser.Navigate().GoToUrl url
+                waitComplete browser
+                Some browser.PageSource
+            with _ ->
+                failedRequests.Add url
+                None
         MailboxProcessor.Start(fun inbox ->
             let rec loop() =
                 async {
@@ -116,8 +125,7 @@ type DynamicCrawler(?Browser, ?Gate) as this =
                             supervisor.Post(Mailbox(inbox))
                             return! loop()
                         | Get url ->
-                            load url
-                            waitComplete browser
+                            load url |> ignore
                             supervisor.Post(Mailbox(inbox))
                             return! loop()
                         | CssSendKeys (selector, text) ->
@@ -138,13 +146,15 @@ type DynamicCrawler(?Browser, ?Gate) as this =
                     | Url x ->
                         match x with
                         | Some url ->
-                            load url
-                            waitComplete browser
-                            printfn "%s crawled by agent %d." url id
-                            let html = browser.PageSource
-                            this.scrapeFunc html url
-                            supervisor.Post(Mailbox(inbox))
-                            return! loop()
+                            let html = load url
+                            match html with
+                            | None ->
+                                supervisor.Post(Mailbox(inbox))
+                                return! loop()
+                            | Some html ->
+                                this.scrapeFunc html url
+                                supervisor.Post(Mailbox(inbox))
+                                return! loop()
                         | None -> supervisor.Post(Mailbox(inbox))
                                   return! loop()
                     | Pause ->
@@ -170,6 +180,10 @@ type DynamicCrawler(?Browser, ?Gate) as this =
         urls |> Seq.iter q.Enqueue
         crawlers |> List.iter (fun ag -> ag.Post <| Url None) 
         supervisor.PostAndAsyncReply(Start)
+
+    member __.FailedRequests = failedRequests.ToArray()
+
+    member __.StoreFailedRequest url = failedRequests.Add url
 
     member __.Quit() =
         crawlers |> List.iter (fun ag -> ag.Post Stop)

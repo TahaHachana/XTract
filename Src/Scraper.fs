@@ -19,17 +19,16 @@ type Scraper<'T when 'T : equality>(extractors) =
     let failedRequests = ConcurrentQueue<string>()
     let log = ConcurrentQueue<string>()
     let mutable loggingEnabled = true
-    let mutable pipelineFunc = fun _ -> ()
+    let mutable pipelineFunc = (fun (record:'T) -> record)
 
     let pipeline =
         MailboxProcessor.Start(fun inbox ->
             let rec loop() =
                 async {
                     let! msg = inbox.Receive()
-                    dataStore.Add msg
-                    |> function
-                    | false -> ()
-                    | true -> pipelineFunc msg
+                    pipelineFunc msg
+                    |> dataStore.Add
+                    |> ignore
                     return! loop()
                 }
             loop()

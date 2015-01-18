@@ -25,32 +25,42 @@ type SingleDynamicScraper<'T when 'T : equality>(extractors, ?Browser) =
         match browser with
             | Chrome -> new ChromeDriver(XTractSettings.chromeDriverDirectory) :> RemoteWebDriver
             | Phantom -> new PhantomJSDriver(XTractSettings.phantomDriverDirectory) :> RemoteWebDriver
-    let load (url:string) = driver.Navigate().GoToUrl url
-    let dataStore = HashSet<'T>()
-//    let failedRequests = ConcurrentQueue<string>()
-    let log = ConcurrentQueue<string>()
-    let mutable loggingEnabled = true
-    let mutable pipelineFunc = fun (record:'T) -> ()
-
-    let pipeline =
-        MailboxProcessor.Start(fun inbox ->
-            let rec loop() =
-                async {
-                    let! msg = inbox.Receive()
-                    dataStore.Add msg
-                    |> function
-                    | false -> ()
-                    | true -> pipelineFunc msg
-                    return! loop()
-                }
-            loop()
-        )
+//    let load (url:string) = driver.Navigate().GoToUrl url
+    let failedRequests = Queue<string>()
 
     let rec waitComplete() =
         let state = driver.ExecuteScript("return document.readyState;").ToString()
         match state with
         | "complete" -> ()
         | _ -> waitComplete()
+    
+    let load (url:string) =
+        try
+            driver.Navigate().GoToUrl url
+            waitComplete()
+            Some driver.PageSource
+        with _ ->
+            failedRequests.Enqueue url
+            None
+
+    let dataStore = HashSet<'T>()
+//    let failedRequests = ConcurrentQueue<string>()
+    let log = ConcurrentQueue<string>()
+    let mutable loggingEnabled = true
+    let mutable pipelineFunc = (fun (record:'T) -> record)
+
+    let pipeline =
+        MailboxProcessor.Start(fun inbox ->
+            let rec loop() =
+                async {
+                    let! msg = inbox.Receive()
+                    pipelineFunc msg
+                    |> dataStore.Add
+                    |> ignore
+                    return! loop()
+                }
+            loop()
+        )
 
     let logger =
         MailboxProcessor.Start(fun inbox ->
@@ -72,7 +82,7 @@ type SingleDynamicScraper<'T when 'T : equality>(extractors, ?Browser) =
 
     /// Loads the specified URL.
     member __.Get (url:string) =
-        load url
+        load url |> ignore
         waitComplete()
 
     /// Selects an element and types the specified text into it.
@@ -131,6 +141,33 @@ type SingleDynamicScraper<'T when 'T : equality>(extractors, ?Browser) =
             pipeline.Post x
             record
 
+    /// Scrapes a single data item from the specified URL or HTML code.
+    member __.Scrape(url) =
+        logger.Post <| "Scraping data from " + url
+        let html = load url
+        match html with
+        | None -> None
+        | Some html ->
+            let record = Utils.scrape<'T> html extractors url
+            match record with
+            | None -> None
+            | Some x ->
+                pipeline.Post x
+                record
+
+    /// Scrapes a single data item from the specified URL or HTML code.
+    member __.Scrape(urls) =
+        for url in urls do
+            logger.Post <| "Scraping data from " + url
+            let html = load url
+            match html with
+            | None -> ()
+            | Some html ->
+                let record = Utils.scrape<'T> html extractors url
+                match record with
+                | None -> ()
+                | Some x -> pipeline.Post x
+
     /// Scrapes all the data items from the specified URL or HTML code.    
     member __.ScrapeAll() =
         let url = driver.Url
@@ -143,13 +180,38 @@ type SingleDynamicScraper<'T when 'T : equality>(extractors, ?Browser) =
             lst |> List.iter pipeline.Post
             records
 
+    member __.ScrapeAll(url) =
+        logger.Post <| "Scraping " + url
+        let html = load url
+        match html with
+        | None -> None
+        | Some html ->
+            let records = Utils.scrapeAll<'T> html extractors url
+            match records with
+            | None -> None
+            | Some lst ->
+                lst |> List.iter pipeline.Post
+                records
+
+    member __.ScrapeAll(urls) =
+        for url in urls do
+            logger.Post <| "Scraping " + url
+            let html = load url
+            match html with
+            | None -> ()
+            | Some html ->
+                let records = Utils.scrapeAll<'T> html extractors url
+                match records with
+                | None -> ()
+                | Some lst -> lst |> List.iter pipeline.Post
+
     /// Returns the data stored so far by the scraper.
     member __.Data =
         dataStore
         |> Seq.toArray
 
-//    /// Returns the urls that scraper failed to download.
-//    member __.FailedRequests = failedRequests.ToArray()
+    /// Returns the urls that scraper failed to download.
+    member __.FailedRequests = failedRequests.ToArray()
 
 //    /// Stores a failed HTTP request, use this method when
 //    /// handling HTTP requests by yourself and you want to

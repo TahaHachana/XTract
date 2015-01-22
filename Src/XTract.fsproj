@@ -58,7 +58,7 @@
     <Compile Include="Settings.fs" />
     <Compile Include="Extraction.fs" />
     <Compile Include="CodeGen.fs" />
-    <Compile Include="Crawler.fs" />
+    <Compile Include="DynamicCrawler.fs" />
     <Compile Include="Helpers.fs" />
     <Compile Include="Scraper.fs" />
     <Compile Include="CustomScraper.fs" />

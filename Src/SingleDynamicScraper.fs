@@ -102,13 +102,21 @@ type SingleDynamicScraper<'T when 'T : equality>(extractors, ?Browser) =
         driver.FindElementByCssSelector(cssSelector).Click()
         waitComplete()
 
-    member __.CssSelect cssSelector = driver.FindElementByCssSelector(cssSelector)
+    member __.CssSelect cssSelector =
+        Html.load driver.PageSource
+        |> fun x -> Html.cssSelect x cssSelector
 
-    member __.CssSelectAll cssSelector = driver.FindElementsByCssSelector(cssSelector)
+    member __.CssSelectAll cssSelector =
+        Html.load driver.PageSource
+        |> fun x -> Html.cssSelectAll x cssSelector
 
-    member __.XpathSelect xpath = driver.FindElementByXPath xpath
+    member __.XpathSelect xpath =
+        Html.load driver.PageSource
+        |> fun x -> Html.xpathSelect x xpath
 
-    member __.XpathSelectAll xpath = driver.FindElementsByXPath xpath
+    member __.XpathSelectAll xpath =
+        Html.load driver.PageSource
+        |> fun x -> Html.xpathSelectAll x xpath
 
     member __.PageSource = driver.PageSource
 

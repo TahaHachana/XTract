@@ -14,7 +14,7 @@ open SpreadSharp.Collections
 open Extraction
 open Helpers
 
-type Scraper<'T when 'T : equality>() =
+type CustomScraper<'T when 'T : equality>() =
     let dataStore = HashSet<'T>()
     let failedRequests = ConcurrentQueue<string>()
     let log = ConcurrentQueue<string>()

@@ -9,9 +9,9 @@ module String =
     /// <returns>A new string stripped from extra white space.</returns>
     let stripSpaces str =
         let regex = Regex.compile "(\n|\r)"
-        let regex' = Regex.compile " {2,}"
+        let regex' = Regex.compile @"\s+"
         regex.Replace(str, " ")
-        |> fun x -> regex'.Replace(x, " ")
+        |> fun x -> regex'.Replace(x, " ").Trim()
 
     let stripInlineJsCss inputString = Regex.remove "(?is)(<script.*?</script>|<style.*?</style>)" inputString
 

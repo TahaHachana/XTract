@@ -80,13 +80,13 @@ type CustomSingleDynamicScraper<'T when 'T : equality>(?Browser) =
     /// Selects an element and types the specified text into it.
     member __.SendKeysCss cssSelector text =
         let elem = driver.FindElementByCssSelector cssSelector
-        printfn "%A" elem.Displayed
+//        printfn "%A" elem.Displayed
         elem.SendKeys(text)
 
     /// Selects an element and types the specified text into it.
     member __.SendKeysXpath xpath text =
         let elem = driver.FindElementByXPath xpath
-        printfn "%A" elem.Displayed
+//        printfn "%A" elem.Displayed
         elem.SendKeys(text)
 
     /// Selects an element and clicks it.

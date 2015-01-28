@@ -67,9 +67,9 @@
     <Compile Include="DynamicScraper.fs" />
     <Content Include="packages.config" />
     <Content Include="app.config" />
+    <None Include="Tests.fsx" />
     <None Include="logo.png" />
     <None Include="logo.svg" />
-    <None Include="Tests.fsx" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="CsvHelper">

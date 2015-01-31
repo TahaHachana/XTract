@@ -33,15 +33,15 @@ module Helpers =
 
 open Helpers
 
-type Driver =
-    | Chrome
-    | Phantom
+//type Driver =
+//    | Chrome
+//    | Phantom
 
-type DynamicCrawler(?Browser, ?Gate) as this =
+type DynamicCrawler(?Gate) as this =
     let q = ConcurrentQueue<string>()
     [<DefaultValue>] val mutable repl : AsyncReplyChannel<unit>
     [<DefaultValue>] val mutable scrapeFunc : string -> string -> unit
-    let driver = defaultArg Browser Phantom
+//    let driver = defaultArg Browser Phantom
     let gate = defaultArg Gate 5
     let failedRequests = ConcurrentBag<string>()
 
@@ -96,10 +96,10 @@ type DynamicCrawler(?Browser, ?Gate) as this =
     
     /// Initializes a crawling agent.
     let crawler id =
-        let browser =
-            match driver with
-            | Chrome -> new ChromeDriver(XTractSettings.chromeDriverDirectory) :> RemoteWebDriver
-            | Phantom -> new PhantomJSDriver(XTractSettings.phantomDriverDirectory) :> RemoteWebDriver
+        let browser = new ChromeDriver(XTractSettings.chromeDriverDirectory)
+//            match driver with
+//            | Chrome -> new ChromeDriver(XTractSettings.chromeDriverDirectory) :> RemoteWebDriver
+//            | Phantom -> new PhantomJSDriver(XTractSettings.phantomDriverDirectory) :> RemoteWebDriver
 //        let load (url:string) = browser.Navigate().GoToUrl url
         do browser.Manage().Timeouts().ImplicitlyWait(TimeSpan.FromSeconds 10.) |> ignore
         do browser.Manage().Timeouts().SetPageLoadTimeout(TimeSpan.FromSeconds 60.) |> ignore

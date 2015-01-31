@@ -16,7 +16,7 @@ open Helpers
 open Crawler
 
 type DynamicScraper<'T when 'T : equality>(extractors, ?Browser, ?Gate) =
-    let browser = defaultArg Browser Phantom
+//    let browser = defaultArg Browser Phantom
     let gate = defaultArg Gate 5
     let dataStore = HashSet<'T>()
 //    let failedRequests = ConcurrentQueue<string>()
@@ -37,7 +37,7 @@ type DynamicScraper<'T when 'T : equality>(extractors, ?Browser, ?Gate) =
             loop()
         )
     
-    let crawler = DynamicCrawler(browser, gate)
+    let crawler = DynamicCrawler(gate)
 
     let logger =
         MailboxProcessor.Start(fun inbox ->

@@ -19,12 +19,12 @@ open Crawler
 open OpenQA.Selenium.PhantomJS
 open OpenQA.Selenium.Remote
 
-type CustomSingleDynamicScraper<'T when 'T : equality>(?Browser) =
-    let browser = defaultArg Browser Phantom
-    let driver =
-        match browser with
-            | Chrome -> new ChromeDriver(XTractSettings.chromeDriverDirectory) :> RemoteWebDriver
-            | Phantom -> new PhantomJSDriver(XTractSettings.phantomDriverDirectory) :> RemoteWebDriver
+type CustomSingleDynamicScraper<'T when 'T : equality>() =
+//    let browser = defaultArg Browser Phantom
+    let driver = new ChromeDriver(XTractSettings.chromeDriverDirectory)
+//        match browser with
+//            | Chrome -> new ChromeDriver(XTractSettings.chromeDriverDirectory) :> RemoteWebDriver
+//            | Phantom -> new PhantomJSDriver(XTractSettings.phantomDriverDirectory) :> RemoteWebDriver
     do driver.Manage().Timeouts().ImplicitlyWait(TimeSpan.FromSeconds 10.) |> ignore
     do driver.Manage().Timeouts().SetPageLoadTimeout(TimeSpan.FromSeconds 60.) |> ignore
 

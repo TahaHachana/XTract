@@ -25,6 +25,9 @@ type CustomSingleDynamicScraper<'T when 'T : equality>(?Browser) =
         match browser with
             | Chrome -> new ChromeDriver(XTractSettings.chromeDriverDirectory) :> RemoteWebDriver
             | Phantom -> new PhantomJSDriver(XTractSettings.phantomDriverDirectory) :> RemoteWebDriver
+    do driver.Manage().Timeouts().ImplicitlyWait(TimeSpan.FromSeconds 10.) |> ignore
+    do driver.Manage().Timeouts().SetPageLoadTimeout(TimeSpan.FromSeconds 60.) |> ignore
+
     let rec waitComplete() =
         let state = driver.ExecuteScript("return document.readyState;").ToString()
         match state with

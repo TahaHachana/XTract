@@ -1,8 +1,6 @@
 ﻿module XTract.Http
 
 open System.Net.Http
-open System.Threading
-open System.Timers
 
 let private getReq (client:HttpClient) (url:string) =
     client.GetAsync url

@@ -101,6 +101,9 @@ type DynamicCrawler(?Browser, ?Gate) as this =
             | Chrome -> new ChromeDriver(XTractSettings.chromeDriverDirectory) :> RemoteWebDriver
             | Phantom -> new PhantomJSDriver(XTractSettings.phantomDriverDirectory) :> RemoteWebDriver
 //        let load (url:string) = browser.Navigate().GoToUrl url
+        do browser.Manage().Timeouts().ImplicitlyWait(TimeSpan.FromSeconds 10.) |> ignore
+        do browser.Manage().Timeouts().SetPageLoadTimeout(TimeSpan.FromSeconds 60.) |> ignore
+        
         let load (url:string) =
             try
                 browser.Navigate().GoToUrl url

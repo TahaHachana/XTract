@@ -26,6 +26,9 @@ type SingleDynamicScraper<'T when 'T : equality>(extractors, ?Browser) =
             | Chrome -> new ChromeDriver(XTractSettings.chromeDriverDirectory) :> RemoteWebDriver
             | Phantom -> new PhantomJSDriver(XTractSettings.phantomDriverDirectory) :> RemoteWebDriver
 //    let load (url:string) = driver.Navigate().GoToUrl url
+    do driver.Manage().Timeouts().ImplicitlyWait(TimeSpan.FromSeconds 10.) |> ignore
+    do driver.Manage().Timeouts().SetPageLoadTimeout(TimeSpan.FromSeconds 60.) |> ignore
+    
     let failedRequests = Queue<string>()
 
     let rec waitComplete() =

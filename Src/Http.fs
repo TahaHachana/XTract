@@ -1,6 +1,8 @@
 ﻿module XTract.Http
 
 open System.Net.Http
+open System.Threading
+open System.Timers
 
 let private getReq (client:HttpClient) (url:string) =
     client.GetAsync url
@@ -25,6 +27,7 @@ let getAsync (url:string) =
             return Some html
         with _ -> return None
     }
+    |> Async.timeout 60000.
 
 let get url =
     getAsync url

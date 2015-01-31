@@ -54,6 +54,7 @@
     <Compile Include="DataExtractor.fs" />
     <Compile Include="Html.fs" />
     <Compile Include="Throttler.fs" />
+    <Compile Include="Async.fs" />
     <Compile Include="Http.fs" />
     <Compile Include="Settings.fs" />
     <Compile Include="Extraction.fs" />

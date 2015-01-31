@@ -4,10 +4,10 @@ open System.Reflection
 
 [<
     AssemblyDescription("F# screen scraping package.");
-    AssemblyFileVersion("0.3.10");
+    AssemblyFileVersion("0.3.11");
     AssemblyProduct("XTract");
     AssemblyTitle("XTract");
-    AssemblyVersion("0.3.10")
+    AssemblyVersion("0.3.11")
 >]
 
 do ()

@@ -19,20 +19,22 @@ open Crawler
 open OpenQA.Selenium.PhantomJS
 open OpenQA.Selenium.Remote
 
-type CustomSingleDynamicScraper<'T when 'T : equality>() =
+type CustomSingleDynamicScraper<'T when 'T : equality>(?Options:ChromeOptions) =
 //    let browser = defaultArg Browser Phantom
-    let driver = new ChromeDriver(XTractSettings.chromeDriverDirectory)
+    let options = defaultArg Options (ChromeOptions())
+    let driver = new ChromeDriver(XTractSettings.chromeDriverDirectory, options)
 //        match browser with
 //            | Chrome -> new ChromeDriver(XTractSettings.chromeDriverDirectory) :> RemoteWebDriver
 //            | Phantom -> new PhantomJSDriver(XTractSettings.phantomDriverDirectory) :> RemoteWebDriver
-    do driver.Manage().Timeouts().ImplicitlyWait(TimeSpan.FromSeconds 10.) |> ignore
-    do driver.Manage().Timeouts().SetPageLoadTimeout(TimeSpan.FromSeconds 60.) |> ignore
+//    do driver.Manage().Timeouts().ImplicitlyWait(TimeSpan.FromSeconds 10.) |> ignore
+//    do driver.Manage().Timeouts().SetPageLoadTimeout(TimeSpan.FromSeconds 10.) |> ignore
 
     let rec waitComplete() =
         let state = driver.ExecuteScript("return document.readyState;").ToString()
         match state with
         | "complete" -> ()
-        | _ -> waitComplete()    
+        | _ -> waitComplete()  
+          
     let load (url:string) =
         try
             driver.Navigate().GoToUrl url
@@ -75,6 +77,25 @@ type CustomSingleDynamicScraper<'T when 'T : equality>() =
             loop()
         )
     
+    member __.WithImplicitlyWait timespan =
+        driver.Manage().Timeouts().ImplicitlyWait(timespan) |> ignore
+
+    member __.WithPageLoadTimeout timespan =
+        driver.Manage().Timeouts().SetPageLoadTimeout(timespan) |> ignore
+
+    member __.Driver = driver
+
+    member __.ExecuteJs js =
+        driver.ExecuteScript js |> ignore
+        waitComplete()
+
+    member __.ExecuteJsAsync js =
+        driver.ExecuteAsyncScript js |> ignore
+        waitComplete()
+
+    member __.Maximize() = driver.Manage().Window.Maximize()
+
+
     member __.WithPipeline f = pipelineFunc <- f
 
     /// Loads the specified URL.

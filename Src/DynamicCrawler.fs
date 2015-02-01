@@ -16,6 +16,11 @@ module Helpers =
         | CssSendKeys of string * string
         | XpathSendKeys of string * string
         | Scrape of (string -> string -> unit)
+        | WithImplicitlyWait of TimeSpan
+        | WithPageLoadTimeout of TimeSpan
+        | ExecuteJs of string
+        | ExecuteJsAsync of string
+        | Maximize
 
     type Message =
         | Mailbox of MailboxProcessor<Message>
@@ -37,11 +42,12 @@ open Helpers
 //    | Chrome
 //    | Phantom
 
-type DynamicCrawler(?Gate) as this =
+type DynamicCrawler(?Gate, ?Options:ChromeOptions) as this =
     let q = ConcurrentQueue<string>()
     [<DefaultValue>] val mutable repl : AsyncReplyChannel<unit>
     [<DefaultValue>] val mutable scrapeFunc : string -> string -> unit
 //    let driver = defaultArg Browser Phantom
+    let options = defaultArg Options (ChromeOptions())
     let gate = defaultArg Gate 5
     let failedRequests = ConcurrentBag<string>()
 
@@ -96,13 +102,13 @@ type DynamicCrawler(?Gate) as this =
     
     /// Initializes a crawling agent.
     let crawler id =
-        let browser = new ChromeDriver(XTractSettings.chromeDriverDirectory)
+        let browser = new ChromeDriver(XTractSettings.chromeDriverDirectory, options)
 //            match driver with
 //            | Chrome -> new ChromeDriver(XTractSettings.chromeDriverDirectory) :> RemoteWebDriver
 //            | Phantom -> new PhantomJSDriver(XTractSettings.phantomDriverDirectory) :> RemoteWebDriver
 //        let load (url:string) = browser.Navigate().GoToUrl url
-        do browser.Manage().Timeouts().ImplicitlyWait(TimeSpan.FromSeconds 10.) |> ignore
-        do browser.Manage().Timeouts().SetPageLoadTimeout(TimeSpan.FromSeconds 60.) |> ignore
+//        do browser.Manage().Timeouts().ImplicitlyWait(TimeSpan.FromSeconds 10.) |> ignore
+//        do browser.Manage().Timeouts().SetPageLoadTimeout(TimeSpan.FromSeconds 60.) |> ignore
         
         let load (url:string) =
             try
@@ -145,6 +151,23 @@ type DynamicCrawler(?Gate) as this =
                             let html = browser.PageSource
                             f html browser.Url
                             supervisor.Post(Mailbox(inbox))
+                            return! loop()
+                        | WithImplicitlyWait timespan ->
+                            browser.Manage().Timeouts().ImplicitlyWait(timespan) |> ignore
+                            return! loop()
+                        | WithPageLoadTimeout timespan ->
+                            browser.Manage().Timeouts().SetPageLoadTimeout(timespan) |> ignore
+                            return! loop()
+                        | ExecuteJs js ->
+                            browser.ExecuteScript js |> ignore
+                            waitComplete browser
+                            return! loop()                         
+                        | ExecuteJsAsync js ->
+                            browser.ExecuteAsyncScript js |> ignore
+                            waitComplete browser
+                            return! loop()
+                        | Maximize ->
+                            browser.Manage().Window.Maximize()
                             return! loop()
                     | Url x ->
                         match x with

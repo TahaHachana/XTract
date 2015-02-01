@@ -15,7 +15,7 @@ open Extraction
 open Helpers
 open Crawler
 
-type DynamicScraper<'T when 'T : equality>(extractors, ?Browser, ?Gate) =
+type DynamicScraper<'T when 'T : equality>(extractors, ?Gate) =
 //    let browser = defaultArg Browser Phantom
     let gate = defaultArg Gate 5
     let dataStore = HashSet<'T>()

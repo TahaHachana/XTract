@@ -222,8 +222,14 @@ let internal linkAttrs (htmlNode:HtmlNode) =
         |> String.stripSpaces
     href, rel, anchor
 
-let makeAbsolute (baseUri:Uri) (href:string) rel anchor =
+let private makeAbsolute (baseUri:Uri) (href:string) rel anchor =
     Uri.TryCreate(baseUri, href)
+    |> function
+    | false, _ -> None
+    | true, uri -> Some (uri.ToString(), rel, anchor)
+
+let private checkAbsolute href rel anchor =
+    Uri.TryCreate(href, UriKind.Absolute)
     |> function
     | false, _ -> None
     | true, uri -> Some (uri.ToString(), rel, anchor)
@@ -242,6 +248,7 @@ let links html url =
         let absolute, relative =
             links
             |> List.partition (fun (href, _, _) -> Regex("^http").IsMatch href)
+        let absolute'= absolute |> List.choose (fun (href, rel, anchor) -> checkAbsolute href rel anchor)
         let ``base`` = baseUri root "http://fsharp.org"
         let relative' =
             match ``base`` with
@@ -255,6 +262,6 @@ let links html url =
         | false, _ -> None
         | true, uri ->
             let host = uri.Host
-            List.append relative' absolute
+            List.append relative' absolute'
             |> List.map (fun (href, rel, anchor) -> makeLink host href rel anchor)
             |> Some

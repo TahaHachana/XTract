@@ -52,10 +52,11 @@
     <Compile Include="Regex.fs" />
     <Compile Include="String.fs" />
     <Compile Include="DataExtractor.fs" />
-    <Compile Include="Html.fs" />
-    <Compile Include="Throttler.fs" />
     <Compile Include="Async.fs" />
     <Compile Include="Http.fs" />
+    <Compile Include="Html.fs" />
+    <Compile Include="Json.fs" />
+    <Compile Include="Throttler.fs" />
     <Compile Include="Settings.fs" />
     <Compile Include="Extraction.fs" />
     <Compile Include="CodeGen.fs" />

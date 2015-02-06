@@ -1,6 +1,9 @@
 ﻿namespace XTract
 
+open System
+open System.IO
 open System.Net
+open System.Text.RegularExpressions
 
 module String =
     
@@ -40,3 +43,7 @@ module String =
                     | ""  -> None
                     | str -> Some str
 
+    let validFileName fileName =
+        let regexSearch = (string <| Path.GetInvalidFileNameChars()) + (string <| Path.GetInvalidPathChars())
+        Regex(String.Format("[{0}]", Regex.Escape(regexSearch)))
+            .Replace(fileName, "-")

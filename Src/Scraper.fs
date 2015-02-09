@@ -13,6 +13,7 @@ open SpreadSharp
 open SpreadSharp.Collections
 open Extraction
 open Helpers
+open Throttler
 
 type Scraper<'T when 'T : equality>(extractors) =
     let dataStore = HashSet<'T>()
@@ -154,7 +155,7 @@ type Scraper<'T when 'T : equality>(extractors) =
     /// Throttles scraping a single data item from the specified URLs
     /// by sending 5 concurrent requests and executes the async computation
     /// once done.
-    member __.ThrottleScrape urls doneAsync =
+    member __.ThrottleScrape urls =
         let asyncs =
             urls
             |> Seq.map (fun x ->
@@ -171,12 +172,13 @@ type Scraper<'T when 'T : equality>(extractors) =
                         | Some r -> pipeline.Post r
                 }                
             )
-        Throttler.throttle asyncs 5 doneAsync
+        let throttler = ThrottlingAgent()
+        throttler.Work asyncs
 
     /// Throttles scraping all the data items from the specified URLs
     /// by sending 5 concurrent requests and executes the async computation
     /// once done.
-    member __.ThrottleScrapeAll urls doneAsync = 
+    member __.ThrottleScrapeAll urls = 
         let asyncs =
             urls
             |> Seq.map (fun x ->
@@ -194,7 +196,8 @@ type Scraper<'T when 'T : equality>(extractors) =
                             lst |> List.iter pipeline.Post
                 }                
             )
-        Throttler.throttle asyncs 5 doneAsync
+        let throttler = ThrottlingAgent()
+        throttler.Work asyncs
 
     /// Returns the data stored so far by the scraper.
     member __.Data =

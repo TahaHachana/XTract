@@ -55,6 +55,7 @@
     <Compile Include="Async.fs" />
     <Compile Include="Http.fs" />
     <Compile Include="Html.fs" />
+    <Compile Include="Csv.fs" />
     <Compile Include="Json.fs" />
     <Compile Include="Throttler.fs" />
     <Compile Include="Settings.fs" />

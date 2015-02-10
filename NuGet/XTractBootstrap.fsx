@@ -5,10 +5,10 @@
 #r """../../packages/CsvHelper.2.10.0/lib/net40-client/CsvHelper.dll"""
 #r """../../packages/Newtonsoft.Json.6.0.7/lib/net45/Newtonsoft.Json.dll"""
 #r """../../packages/Selenium.WebDriver.2.44.0/lib/net40/WebDriver.dll"""
-#r """../../packages/SpreadSharp.0.3.0/lib/Net40/Microsoft.Office.Interop.Excel.dll"""
-#r """../../packages/SpreadSharp.0.3.0/lib/Net40/SpreadSharp.dll"""
+#r """../../packages/SpreadSharp.0.3.1/lib/Net40/Microsoft.Office.Interop.Excel.dll"""
+#r """../../packages/SpreadSharp.0.3.1/lib/Net40/SpreadSharp.dll"""
 #load """../../packages/Deedle.1.0.6/Deedle.fsx"""
-#r """../../packages/XTract.0.3.18/Lib/net40/XTract.dll"""
+#r """../../packages/XTract.0.3.20/Lib/net40/XTract.dll"""
 
 open System.IO
 open XTract.Settings

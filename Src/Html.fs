@@ -244,12 +244,12 @@ let links html url =
             htmlNodes
             |> List.map linkAttrs
             |> List.filter (fun (href, _, _) ->
-                Regex("(?i)(?!mailto:|location\.|javascript:).+").IsMatch href)
+                not <| Regex("(?i)^(mailto:|location\.|javascript:)").IsMatch href)
         let absolute, relative =
             links
             |> List.partition (fun (href, _, _) -> Regex("^http").IsMatch href)
         let absolute'= absolute |> List.choose (fun (href, rel, anchor) -> checkAbsolute href rel anchor)
-        let ``base`` = baseUri root "http://fsharp.org"
+        let ``base`` = baseUri root url
         let relative' =
             match ``base`` with
             | None -> relative

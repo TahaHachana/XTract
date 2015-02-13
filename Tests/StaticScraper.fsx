@@ -1,4 +1,6 @@
-﻿#load @"../Src/packages/XTract.0.3.6/XTractBootstrap.fsx"
+﻿#load @"../Src/packages/XTract.0.3.21/XTractBootstrap.fsx"
+
+#load @"../packages/XTract.0.3.21/XTractBootstrap.fsx"
 
 open XTract
 
@@ -63,23 +65,24 @@ let urls =
 let url = urls.[0]
 
 // Scrape a single URL
-scraper.Scrape url
+let websharper = scraper.Scrape url
 
 // Handle HTTP requests yourself then scrape the HTML code
 let html =
     Http.get url
     |> Option.get
 
-scraper.ScrapeHtml html url
+let websharper' = scraper.ScrapeHtml html url
 
 // Add a pipeline if you want to further process
 // the scraped data or may be store it in a database
 scraper.WithPipeline (fun pkg ->
-    scraper.Log <| sprintf "Storing %s in database" pkg.name)
+    scraper.Log <| sprintf "Storing %s in database" pkg.name
+    pkg)
 
-// Scrape multiple urls
-let doneAsync = async {printfn "Done!"}
-scraper.ThrottleScrape urls doneAsync
+// Throttle scraping multiple urls
+scraper.ThrottleScrape urls
+|> Async.RunSynchronously
 
 // Data as an array
 scraper.Data

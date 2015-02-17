@@ -43,7 +43,7 @@ module String =
                     | ""  -> None
                     | str -> Some str
 
-    let validFileName fileName =
-        let regexSearch = (string <| Path.GetInvalidFileNameChars()) + (string <| Path.GetInvalidPathChars())
-        Regex(String.Format("[{0}]", Regex.Escape(regexSearch)))
-            .Replace(fileName, "-")
+    let validPath path =
+        let regexSearch = new string(Path.GetInvalidFileNameChars()) + new string(Path.GetInvalidPathChars())
+        let regex = new Regex(String.Format("[{0}]", Regex.Escape(regexSearch)))
+        regex.Replace(path, "-")

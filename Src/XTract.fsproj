@@ -53,8 +53,8 @@
     <Compile Include="String.fs" />
     <Compile Include="DataExtractor.fs" />
     <Compile Include="Async.fs" />
-    <Compile Include="Http.fs" />
     <Compile Include="Links.fs" />
+    <Compile Include="Http.fs" />
     <Compile Include="Html.fs" />
     <Compile Include="Csv.fs" />
     <Compile Include="Json.fs" />

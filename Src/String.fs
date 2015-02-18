@@ -4,6 +4,7 @@ open System
 open System.IO
 open System.Net
 open System.Text.RegularExpressions
+open System.Globalization
 
 module String =
     
@@ -47,3 +48,22 @@ module String =
         let regexSearch = new string(Path.GetInvalidFileNameChars()) + new string(Path.GetInvalidPathChars())
         let regex = new Regex(String.Format("[{0}]", Regex.Escape(regexSearch)))
         regex.Replace(path, "-")
+
+    /// <summary>Converts the specified string to titlecase.</summary>
+    /// <param name="str">the input string.</param>
+    let toTitleCase (str:string) = CultureInfo.CurrentCulture.TextInfo.ToTitleCase(str.ToLower())
+
+    /// <summary>Returns a copy of the input string with the first
+    /// letter converted to uppercase.</summary>
+    /// <param name="str">the input string.</param>
+    let firstCharToUpper (str:string) =
+        match str.Length with
+        | 0 -> ""
+        | 1 -> str.ToUpper()
+        | _ -> 
+            Char.ToUpper str.[0]
+            |> fun x -> string x + str.Substring 1
+
+
+
+

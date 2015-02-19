@@ -2,14 +2,14 @@
 <package >
   <metadata>
     <id>XTract</id>
-    <version>0.3.23</version>
+    <version>0.3.25</version>
     <authors>Taha Hachana</authors>
     <owners>Taha Hachana</owners>
     <projectUrl>https://github.com/TahaHachana/XTract</projectUrl>
     <iconUrl>https://raw.githubusercontent.com/TahaHachana/XTract/master/Src/logo.png</iconUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>F# screen scraping package.</description>
-    <releaseNotes>Update the HTTP module.</releaseNotes>
+    <releaseNotes>Fix static scrapers throttling members.</releaseNotes>
     <tags>F# SCREEN SCRAPING SCRAPE HTML DATA MINING</tags>
     <dependencies>
       <dependency id="Fizzler" version="1.0.0" />

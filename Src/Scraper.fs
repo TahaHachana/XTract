@@ -152,52 +152,52 @@ type Scraper<'T when 'T : equality>(extractors) =
                 lst |> List.iter pipeline.Post
                 records
 
-    /// Throttles scraping a single data item from the specified URLs
-    /// by sending 5 concurrent requests and executes the async computation
-    /// once done.
+    /// Throttles scraping a single data item from the specified URLs.
     member __.ThrottleScrape urls =
-        let asyncs =
-            urls
-            |> Seq.map (fun x ->
-                async {
-                    logger.Post <| "[Info] Scraping " + x
-                    let! html = Http.getAsync x
-                    match html with
-                    | None ->
-                        failedRequests.Enqueue x
-                    | Some html ->
-                        let record = Utils.scrape<'T> html extractors x
-                        match record with
-                        | None -> ()
-                        | Some r -> pipeline.Post r
-                }                
-            )
-        let throttler = ThrottlingAgent()
-        throttler.Work asyncs
+        async {
+            let asyncs =
+                urls
+                |> Seq.map (fun x ->
+                    async {
+                        logger.Post <| "[Info] Scraping " + x
+                        let! html = Http.getAsync x
+                        match html with
+                        | None ->
+                            failedRequests.Enqueue x
+                        | Some html ->
+                            let record = Utils.scrape<'T> html extractors x
+                            match record with
+                            | None -> ()
+                            | Some r -> pipeline.Post r
+                    }                
+                )
+            let throttler = ThrottlingAgent()
+            do! throttler.Work asyncs
+        }
 
-    /// Throttles scraping all the data items from the specified URLs
-    /// by sending 5 concurrent requests and executes the async computation
-    /// once done.
+    /// Throttles scraping all the data items from the specified URLs.
     member __.ThrottleScrapeAll urls = 
-        let asyncs =
-            urls
-            |> Seq.map (fun x ->
-                async {
-                    logger.Post <| "[Info] Scraping " + x
-                    let! html = Http.getAsync x
-                    match html with
-                    | None ->
-                        failedRequests.Enqueue x
-                    | Some html ->
-                        let records = Utils.scrapeAll<'T> html extractors x
-                        match records with
-                        | None -> ()
-                        | Some lst ->
-                            lst |> List.iter pipeline.Post
-                }                
-            )
-        let throttler = ThrottlingAgent()
-        throttler.Work asyncs
+        async {
+            let asyncs =
+                urls
+                |> Seq.map (fun x ->
+                    async {
+                        logger.Post <| "[Info] Scraping " + x
+                        let! html = Http.getAsync x
+                        match html with
+                        | None ->
+                            failedRequests.Enqueue x
+                        | Some html ->
+                            let records = Utils.scrapeAll<'T> html extractors x
+                            match records with
+                            | None -> ()
+                            | Some lst ->
+                                lst |> List.iter pipeline.Post
+                    }                
+                )
+            let throttler = ThrottlingAgent()
+            do! throttler.Work asyncs
+        }
 
     /// Returns the data stored so far by the scraper.
     member __.Data =

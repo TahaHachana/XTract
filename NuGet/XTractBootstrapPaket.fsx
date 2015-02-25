@@ -6,7 +6,6 @@
 #r """../../packages/Newtonsoft.Json/lib/net45/Newtonsoft.Json.dll"""
 #r """../../packages/Selenium.WebDriver/lib/net40/WebDriver.dll"""
 #r """../../packages/SpreadSharp/lib/Net40/SpreadSharp.dll"""
-#load """../../packages/Deedle/Deedle.fsx"""
 #r """../../packages/XTract/Lib/net45/XTract.dll"""
 
 open System.IO

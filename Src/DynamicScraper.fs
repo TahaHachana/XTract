@@ -5,7 +5,6 @@ open System.Collections.Concurrent
 open System.Collections.Generic
 open System
 open Newtonsoft.Json
-open Deedle
 open Microsoft.FSharp.Reflection
 open System.IO
 open CsvHelper
@@ -127,7 +126,7 @@ type DynamicScraper<'T when 'T : equality>(extractors, ?Gate) =
         JsonConvert.SerializeObject(dataStore, Formatting.Indented)
 
     /// Returns the data stored so far by the scraper as a Deedle data frame.
-    member __.DataFrame = Frame.ofRecords dataStore
+//    member __.DataFrame = Frame.ofRecords dataStore
 
     /// Saves the data stored by the scraper in a CSV file.
     member __.SaveCsv(path) =

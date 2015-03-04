@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<package >
+  <metadata>
+    <id>XTract</id>
+    <version>0.4.0-Beta3</version>
+    <authors>Taha Hachana</authors>
+    <owners>Taha Hachana</owners>
+    <projectUrl>https://github.com/TahaHachana/XTract</projectUrl>
+    <iconUrl>https://raw.githubusercontent.com/TahaHachana/XTract/master/Src/logo.png</iconUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>F# screen scraping package.</description>
+    <releaseNotes>Seperate packages for the static and dynamic scrapers.</releaseNotes>
+    <tags>F# SCREEN SCRAPING SCRAPE HTML DATA MINING</tags>
+    <dependencies>
+      <dependency id="Fizzler" version="1.0.0" />
+      <dependency id="Fizzler.Systems.HtmlAgilityPack" version="1.0.0" />
+      <dependency id="HtmlAgilityPack" version="1.4.9" />
+      <dependency id="Newtonsoft.Json" version="6.0.8" />
+      <dependency id="CsvHelper" version="2.10.0" />
+      <dependency id="SpreadSharp" version="0.3.1" />
+    </dependencies>
+  </metadata>
+</package>

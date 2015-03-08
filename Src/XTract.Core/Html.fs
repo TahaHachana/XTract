@@ -54,6 +54,17 @@ let xpathSelect (htmlNode:HtmlNode) xpath =
     | null -> None
     | x -> Some x
 
+/// <summary>Selects the first element matching the supplied XPath
+/// expression and returns its inner text. If no match is found
+/// then the empty string is returned.</summary>
+/// <param name="htmlNode">The HTML node on which to perform the query.</param>
+/// <param name="xpath">The XPath expression.</param>
+let xpathSelectInnerText (htmlNode: HtmlNode) xpath =
+    htmlNode.SelectSingleNode xpath
+    |> function
+    | null -> ""
+    | x -> innerText x
+
 /// Retrieves all the elements matching the CSS selector.
 let xpathSelectAll (htmlNode:HtmlNode) xpath =
     htmlNode.SelectNodes xpath

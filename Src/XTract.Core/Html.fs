@@ -18,6 +18,19 @@ let cssSelect (htmlNode:HtmlNode) cssSelector =
     | null -> None
     | x -> Some x
 
+/// <summary>Selects the first element matching the supplied selector string
+/// and returns its inner text. If no match is found then the empty
+/// string is returned.</summary>
+/// <param name="htmlNode">The HTML node on which to perform the query.</param>
+/// <param name="selector">The CSS selector string.</param>
+let cssSelectInnerText (htmlNode: HtmlNode) selector =
+    htmlNode.QuerySelector selector
+    |> function
+    | null -> String.Empty
+    | x ->
+        String.decodeHtml x.InnerText
+        |> String.stripSpaces
+
 /// Retrieves all the elements matching the CSS selector.
 let cssSelectAll (htmlNode:HtmlNode) cssSelector =
     htmlNode.QuerySelectorAll cssSelector

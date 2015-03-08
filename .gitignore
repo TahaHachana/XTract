@@ -162,3 +162,5 @@ pip-log.txt
 # Mac crap
 .DS_Store
 Src/Tests.fsx
+NuGet/XTract/Lib/Net40/XTract.dll
+NuGet/XTract/Lib/Net40/XTract.Core.dll

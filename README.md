@@ -15,11 +15,12 @@ Usage
 -----
 
 ```fsharp
-#load @"../packages/XTract.0.3.21/XTractBootstrap.fsx"
+#load @"../packages/XTract.0.4.0/XTractBootstrap.fsx"
 
 open XTract
 
-// Data extractors
+// Define the extractors using CSS selectors
+// and/or XPath expressions.
 let name =
     Css "div > div > div > div > h1"
     |> Extractor.New
@@ -45,10 +46,9 @@ let owners =
 let extractors = [name; version; downloads; project; owners]
 
 // Get some help when mapping the extractors to
-// an F# record type
-let recordCode = CodeGen.recordCode extractors
+// an F# record type.
+let dataModel = CodeGen.recordCode extractors
 
-// Data model
 type Pkg =
     {
         name: string
@@ -105,15 +105,12 @@ scraper.Data
 // Data as JSON
 scraper.JsonData
 
-// Data as data frame
-scraper.DataFrame
-
 // Save as an Excel workbook
 open System
 open System.IO
 
 let desktop = Environment.GetFolderPath Environment.SpecialFolder.Desktop
-let path = Path.Combine(desktop, "Data1.xlsx")
+let path = Path.Combine(desktop, "NuGet.xlsx")
 scraper.SaveExcel path
 
 // Failed HTTP requests
@@ -123,7 +120,7 @@ scraper.FailedRequests
 scraper.LogData
 
 // Save as CSV
-let path' = Path.Combine(desktop, "Data.csv")
+let path' = Path.Combine(desktop, "NuGet.csv")
 scraper.SaveCsv path'
 ```
 

@@ -18,6 +18,14 @@ let cssSelect (htmlNode:HtmlNode) cssSelector =
     | null -> None
     | x -> Some x
 
+/// <summary>Returns the text between the start and end tags of the
+/// supplied node after decoding HTML encoded characters and removing
+/// all white-space and newlines.</summary>
+/// <param name="htmlNode"></param>
+let innerText (htmlNode: HtmlNode) =
+    String.decodeHtml htmlNode.InnerText
+    |> String.stripSpaces
+
 /// <summary>Selects the first element matching the supplied selector string
 /// and returns its inner text. If no match is found then the empty
 /// string is returned.</summary>
@@ -27,9 +35,7 @@ let cssSelectInnerText (htmlNode: HtmlNode) selector =
     htmlNode.QuerySelector selector
     |> function
     | null -> String.Empty
-    | x ->
-        String.decodeHtml x.InnerText
-        |> String.stripSpaces
+    | x -> innerText x
 
 /// Retrieves all the elements matching the CSS selector.
 let cssSelectAll (htmlNode:HtmlNode) cssSelector =

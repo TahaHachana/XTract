@@ -1,10 +1,11 @@
 ﻿module XTract.String
 
 open System
+open System.Globalization
 open System.IO
 open System.Net
 open System.Text.RegularExpressions
-open System.Globalization
+open System.Web
 
 /// <summary>Removes line breaks and extra white space
 /// from the supplied string.</summary>
@@ -41,6 +42,18 @@ let htmlDecode input = WebUtility.HtmlDecode input
 /// </summary>
 /// <param name="input">The input string.</param>
 let htmlEncode input = WebUtility.HtmlEncode input
+
+/// <summary>
+/// Encodes a URL string.
+/// </summary>
+/// <param name="input">The input string.</param>
+let urlEncode (input: string) = HttpUtility.UrlEncode input
+
+/// <summary>
+/// Decodes a URL-encoded string.
+/// </summary>
+/// <param name="input">The input string.</param>
+let urlDecode (input: string) = HttpUtility.UrlDecode input
 
 /// <summary>
 /// Removes JavaScript, CSS and tags from the supplied

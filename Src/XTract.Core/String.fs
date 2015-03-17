@@ -60,12 +60,11 @@ let urlDecode (input: string) = HttpUtility.UrlDecode input
 /// HTML string and decodes HTML-encoded characters.
 /// </summary>
 /// <param name="input">The HTML string.</param>
-let stripHtml input =    
-    stripSpaces input
-    |> stripInlineJsCss
-    |> stripTags
-    |> htmlDecode
-    |> fun x -> x.Trim()
+let stripHtml =    
+    stripInlineJsCss
+    >> stripTags
+    >> htmlDecode
+    >> stripSpaces
 
 /// <summary>
 /// Removes punctuation from the supplied string.

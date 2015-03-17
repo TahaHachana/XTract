@@ -2,143 +2,168 @@
 
 open Fizzler.Systems.HtmlAgilityPack
 open HtmlAgilityPack
-open System.Text.RegularExpressions
 open System
 
-/// Loads a HTML document and returns its root node.
-let load html =
+let private optionFromPotentialNull =
+    function
+    | null -> None
+    | x -> Some x
+
+/// <summary>
+/// Loads an HTML document from the specified string
+/// and returns its root node.
+/// </summary>
+/// <param name="html">The HTML string.</param>
+let loadRoot html =
     let document = HtmlDocument()
     document.LoadHtml html
     document.DocumentNode
 
-/// Retrieves the first element matching the CSS selector.
-let cssSelect (htmlNode:HtmlNode) cssSelector =
-    htmlNode.QuerySelector cssSelector
-    |> function
-    | null -> None
-    | x -> Some x
+/// <summary>
+/// Retrieves the first element node from descendants
+/// of the starting element node that matches any selector
+/// within the supplied selector strings.
+/// </summary>
+/// <param name="startingNode">The starting HTML element node.</param>
+/// <param name="selector">The CSS selector string.</param>
+let cssSelect selector (startingNode: HtmlNode) =
+    startingNode.QuerySelector selector
+    |> optionFromPotentialNull
 
-/// <summary>Returns the text between the start and end tags of the
+/// <summary>
+/// Returns the text between the start and end tags of the
 /// supplied node after decoding HTML encoded characters and removing
-/// all white-space and newlines.</summary>
+/// extra white-space and newlines.
+/// </summary>
 /// <param name="htmlNode"></param>
 let innerText (htmlNode: HtmlNode) =
-    String.decodeHtml htmlNode.InnerText
+    String.htmlDecode htmlNode.InnerText
     |> String.stripSpaces
 
-/// <summary>Selects the first element matching the supplied selector string
-/// and returns its inner text. If no match is found then the empty
-/// string is returned.</summary>
-/// <param name="htmlNode">The HTML node on which to perform the query.</param>
+/// <summary>
+/// Returns the inner text of the first element node
+/// from descendants of the starting element node that
+/// matches any selector withing the supplied selector strings.
+/// </summary>
 /// <param name="selector">The CSS selector string.</param>
-let cssSelectInnerText (htmlNode: HtmlNode) selector =
-    htmlNode.QuerySelector selector
+/// <param name="startingNode">The starting HTML element node.</param>
+let cssSelectInnerText selector (startingNode: HtmlNode) =
+    startingNode.QuerySelector selector
     |> function
     | null -> String.Empty
     | x -> innerText x
 
-/// Retrieves all the elements matching the CSS selector.
-let cssSelectAll (htmlNode:HtmlNode) cssSelector =
-    htmlNode.QuerySelectorAll cssSelector
+/// <summary>
+/// Retrieves all element nodes from descendants
+/// of the starting element node that match any selector
+/// within the supplied selector strings.
+/// </summary>
+/// <param name="selector">The CSS selector string.</param>
+/// <param name="startingNode">The starting HTML element node.</param>
+let cssSelectAll selector (startingNode: HtmlNode) =
+    startingNode.QuerySelectorAll selector
     |> function
     | null -> None
     | x ->
-        x
-        |> Seq.toList
+        Seq.toList x
         |> Some
 
-/// Retrieves the first element matching the CSS selector.
-let xpathSelect (htmlNode:HtmlNode) xpath =
-    htmlNode.SelectSingleNode xpath
-    |> function
-    | null -> None
-    | x -> Some x
-
-/// <summary>Selects the first element matching the supplied XPath
-/// expression and returns its inner text. If no match is found
-/// then the empty string is returned.</summary>
-/// <param name="htmlNode">The HTML node on which to perform the query.</param>
+/// <summary>
+/// Retrieves the first element node from descendants
+/// of the starting element node that matches the supplied
+/// XPath expression.
+/// </summary>
 /// <param name="xpath">The XPath expression.</param>
-let xpathSelectInnerText (htmlNode: HtmlNode) xpath =
-    htmlNode.SelectSingleNode xpath
+/// <param name="startingNode">The starting HTML element node.</param>
+let xpathSelect xpath (startingNode: HtmlNode) =
+    startingNode.SelectSingleNode xpath
+    |> optionFromPotentialNull
+
+/// <summary>
+/// Returns the inner text of the first element node
+/// from descendants of the starting element node that
+/// matches the supplied XPath expression.
+/// </summary>
+/// <param name="xpath">The XPath expression.</param>
+/// <param name="startingNode">The starting HTML element node.</param>
+let xpathSelectInnerText xpath (startingNode: HtmlNode) =
+    startingNode.SelectSingleNode xpath
     |> function
-    | null -> ""
+    | null -> String.Empty
     | x -> innerText x
 
-/// Retrieves all the elements matching the CSS selector.
-let xpathSelectAll (htmlNode:HtmlNode) xpath =
-    htmlNode.SelectNodes xpath
+/// <summary>
+/// Retrieves all element nodes from descendants
+/// of the starting element node that match the supplied
+/// XPath expression.
+/// </summary>
+/// <param name="xpath">The XPath expression.</param>
+/// <param name="startingNode">The starting HTML element node.</param>
+let xpathSelectAll xpath (startingNode: HtmlNode) =
+    startingNode.SelectNodes xpath
     |> function
     | null -> None
     | x ->
-        x
-        |> Seq.toList
+        Seq.toList x
         |> Some
 
-// todo: mark as private
-//let eltText html xpath =
-//    let root = load html
-//    xpathSelect root xpath
-//    |> function
-//    | None -> None
-//    | Some htmlNode ->
-//        htmlNode.InnerText
-//        |> function
-//        | "" -> None
-//        | str ->
-//            String.decodeHtml str
-//            |> String.stripSpaces
-//            |> Some
-
+/// <summary>
+/// Returns the title of the supplied HTML string.
+/// </summary>
+/// <param name="html">The HTML string.</param>
 let title html =
-    let root = load html
-    xpathSelect root "//title"
+    loadRoot html
+    |> xpathSelect "//title"
     |> function
     | None -> None
     | Some htmlNode ->
-        htmlNode.InnerText
-        |> function
-        | "" -> None
-        | str ->
-            String.decodeHtml str
-            |> String.stripSpaces
-            |> Some
+        innerText htmlNode
+        |> Some
 
+/// Describes an HTML meta tag.
 type Meta =
     {
-        HttpEquiv : string
-        Name : string
-        Content : string
+        name : string
+        content : string
+        httpEquiv : string
     }
         
-    static member New content httpEquiv name =
+    static member New name content httpEquiv =
         {
-            HttpEquiv = httpEquiv
-            Name = name
-            Content = content
+            name = name
+            content = content
+            httpEquiv = httpEquiv
         }
 
+/// <summary>
+/// Returns the meta tags of the supplied HTML string.
+/// </summary>
+/// <param name="html">The HTML string.</param>
 let meta html =
-    let root = load html
-    xpathSelectAll root "//meta"
+    loadRoot html
+    |> xpathSelectAll "//meta"
     |> function
     | None -> None
     | Some lst ->
         lst
         |> List.map (fun x ->
+            let name = x.GetAttributeValue("name", "")
             let content =
                 x.GetAttributeValue("content", "")
-                |> String.decodeHtml
+                |> String.htmlDecode
                 |> String.stripSpaces
             let httpEquiv = x.GetAttributeValue("http-equiv", "")
-            let name = x.GetAttributeValue("name", "")
-            Meta.New content httpEquiv name
+            Meta.New name content httpEquiv
         )
         |> Some
 
+/// <summary>
+/// Returns the meta description of the supplied HTML string.
+/// </summary>
+/// <param name="html">The HTML string.</param>
 let metaDescription html =
-    let root = load html
-    xpathSelect root "//meta[@name='description']"
+    loadRoot html
+    |> xpathSelect "//meta[@name='description']"
     |> function
     | None -> None
     | Some htmlNode ->
@@ -146,13 +171,17 @@ let metaDescription html =
         |> function
         | "" -> None
         | str ->
-            String.decodeHtml str
+            String.htmlDecode str
             |> String.stripSpaces
             |> Some
-        
+    
+/// <summary>
+/// Returns the meta keywords of the supplied HTML string.
+/// </summary>
+/// <param name="html">The HTML string.</param>
 let metaKeywords html =
-    let root = load html
-    xpathSelect root "//meta[@name='keywords']"
+    loadRoot html
+    |> xpathSelect "//meta[@name='keywords']"
     |> function
     | None -> None
     | Some htmlNode ->
@@ -160,138 +189,37 @@ let metaKeywords html =
         |> function
         | "" -> None
         | str ->
-            String.decodeHtml str
+            String.htmlDecode str
             |> String.stripSpaces
             |> Some
 
+/// An HTML heading tag.
 type Heading =
     {
-        Level : int
-        Text : string
+        level : int
+        text : string
     }
 
     static member New level text =
         {
-            Level = level
-            Text = text
+            level = level
+            text = text
         }  
 
+/// <summary>
+/// Returns the headings of the supplied HTML string.
+/// </summary>
+/// <param name="html">The HTML string.</param>
 let headings html =
-    let root = load html
-    xpathSelectAll root "//*[self::h1 or self::h2 or self::h3 or self::h4 or self::h5 or self::h6]"
+    loadRoot html
+    |> xpathSelectAll "//*[self::h1 or self::h2 or self::h3 or self::h4 or self::h5 or self::h6]"
     |> function
     | None -> None
     | Some lst ->
         lst
         |> List.map (fun x ->
-            let level = x.Name.[1..] |> int
-            let text =
-                x.InnerText
-                |> String.decodeHtml
-                |> String.stripSpaces
+            let level = x.Name.[1] |> int
+            let text = innerText x
             Heading.New level text
         )
         |> Some
-
-//type Hyperlink =
-//    {
-//        Href: string
-//        Anchor: string
-//        Type: LinkType
-//        Rel: Rel
-//    }
-//
-//    static member New href anchor linkType rel =
-//        {
-//            Href = href
-//            Anchor = anchor
-//            Type = linkType
-//            Rel = rel
-//        }
-//
-//and LinkType = External | Internal
-//
-//and Rel = Follow | NoFollow
-//
-//let internal baseUri root url =
-//    xpathSelect root "//base"
-//    |> function
-//    | None -> url
-//    | Some htmlNode ->
-//        htmlNode.GetAttributeValue("href", "")
-//        |> function
-//        | "" -> url
-//        | x -> x
-//    |> fun x ->
-//        Uri.TryCreate(x, UriKind.Absolute)
-//        |> function
-//        | false, _ -> None
-//        | true, uri -> Some uri
-//
-//let internal makeLink host (href:string) (rel:string) anchor =
-//    let linkType =
-//        match href.Contains host with
-//        | false -> External
-//        | true -> Internal
-//    let rel' =
-//        match rel.ToLowerInvariant().Contains("nofollow") with
-//        | false -> Follow
-//        | true -> NoFollow
-//    Hyperlink.New href anchor linkType rel'
-//
-//let internal aTags root =
-//    xpathSelectAll root "//a"
-//
-//let internal linkAttrs (htmlNode:HtmlNode) =
-//    let href = htmlNode.GetAttributeValue("href", "")
-//    let rel = htmlNode.GetAttributeValue("rel", "")
-//    let anchor =
-//        htmlNode.InnerText
-//        |> String.stripHtml
-//        |> String.decodeHtml
-//        |> String.stripSpaces
-//    href, rel, anchor
-//
-//let private makeAbsolute (baseUri:Uri) (href:string) rel anchor =
-//    Uri.TryCreate(baseUri, href)
-//    |> function
-//    | false, _ -> None
-//    | true, uri -> Some (uri.ToString(), rel, anchor)
-//
-//let private checkAbsolute href rel anchor =
-//    Uri.TryCreate(href, UriKind.Absolute)
-//    |> function
-//    | false, _ -> None
-//    | true, uri -> Some (uri.ToString(), rel, anchor)
-//
-//let links html url =
-//    let root = load html
-//    aTags root
-//    |> function
-//    | None -> None
-//    | Some htmlNodes ->
-//        let links =
-//            htmlNodes
-//            |> List.map linkAttrs
-//            |> List.filter (fun (href, _, _) ->
-//                not <| Regex("(?i)^(mailto:|location\.|javascript:)").IsMatch href)
-//        let absolute, relative =
-//            links
-//            |> List.partition (fun (href, _, _) -> Regex("^http").IsMatch href)
-//        let absolute'= absolute |> List.choose (fun (href, rel, anchor) -> checkAbsolute href rel anchor)
-//        let ``base`` = baseUri root url
-//        let relative' =
-//            match ``base`` with
-//            | None -> relative
-//            | Some baseUri ->
-//                relative
-//                |> List.choose (fun (href, rel, anchor) ->
-//                    makeAbsolute baseUri href rel anchor)
-//        Uri.TryCreate(url, UriKind.Absolute)
-//        |> function
-//        | false, _ -> None
-//        | true, uri ->
-//            let host = uri.Host
-//            List.append relative' absolute'
-//            |> List.map (fun (href, rel, anchor) -> makeLink host href rel anchor)
-//            |> Some

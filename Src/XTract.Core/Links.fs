@@ -1,10 +1,10 @@
 ﻿module XTract.Links
 
-open System
 open HtmlAgilityPack
+open System
 open System.Text.RegularExpressions
 
-/// Describes a link within a HTML document.
+/// An HTML link.
 type Hyperlink =
     {
         uri: Uri
@@ -16,7 +16,7 @@ type Hyperlink =
 
     static member New uri anchor destination nofollow referrer =
         {
-            uri= uri
+            uri = uri
             anchor = anchor
             destination = destination
             nofollow = nofollow
@@ -26,12 +26,6 @@ type Hyperlink =
 and Destination = External | Internal
 
 module private Helpers =
-
-    /// Gets the root node of a HTML document.
-    let rootNode html=
-        let document = HtmlDocument()
-        document.LoadHtml html
-        document.DocumentNode
 
     /// Selects the nodes matching the "//a" XPath expression
     /// from the root node.
@@ -81,11 +75,7 @@ module private Helpers =
         | true -> None
 
     /// Returns the anchor of a link.
-    let getAnchor (linkNode:HtmlNode) =
-        linkNode.InnerText
-        |> String.stripHtml
-        |> String.decodeHtml
-        |> String.stripSpaces
+    let getAnchor (linkNode:HtmlNode) = String.stripHtml linkNode.InnerText
 
     /// Determines the destination of a link's address.
     let getDestination (uri:Uri) host =
@@ -111,21 +101,25 @@ module private Helpers =
 
 open Helpers
 
-/// Collects a hyperlinks list from the specified HTML document.
+/// <summary>
+/// Retrieves a hyperlinks list from the supplied HTML document.
 /// The referrer field is set to the specified request URL.
-let fromHtml html requestUri =
-    let root = rootNode html
+/// </summary>
+/// <param name="html">The HTML string.</param>
+/// <param name="requestUrl">The HTTP request URL.</param>
+let fromHtml html requestUrl =
+    let root = Html.loadRoot html
     let links = selectLinks root
     match links with
     | None -> None
     | _ ->
-        let baseUri = getBaseUri root requestUri
+        let baseUri = getBaseUri root requestUrl
         match baseUri with
         | None -> None
         | _ ->
             let host = (Option.get baseUri).Host
             Option.get links
-            |> List.choose (makeHyperlink baseUri host requestUri)
+            |> List.choose (makeHyperlink baseUri host requestUrl)
             |> function
             | [] -> None
             | lst -> Some lst

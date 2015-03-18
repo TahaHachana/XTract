@@ -4,7 +4,7 @@ open System
 open System.Net
 open System.Net.Http
 
-/// Describes a HTTP response received after sending a GET web request.
+/// An HTTP response received after sending a GET request.
 type HttpResponse =
     {
         requestUri: Uri
@@ -12,9 +12,7 @@ type HttpResponse =
         contentType: string
         isHtml: bool
         html: string option
-//        hyperlinks: Hyperlink list
     }
-
 
 type HC = HttpClient
 
@@ -48,17 +46,6 @@ type HttpClient() =
             | _ -> return None
         }
     
-    /// Collects a hyperlinks list from the specified HTML document
-    /// using the request URL as a referrer.
-//    member private __.LinksFromHtml html requestUri =
-//        match html with
-//        | None -> []
-//        | Some html ->
-//            let links = Links.fromHtml html requestUri
-//            match links.IsNone with
-//            | false -> Option.get links
-//            | true -> []
-
     /// Creates a new HttpResponse instance from the HTTP response message.
     member private __.MakeHttpResponse (httpResponseMsg: HttpResponseMessage) =
         async {
@@ -68,7 +55,6 @@ type HttpClient() =
             let contentType = content.Headers.ContentType.MediaType
             let isHtml = contentType.ToLower().Contains "html"
             let! html = __.ReadAsync statusCode isHtml content
-//            let links = __.LinksFromHtml html <| requestUri.ToString()
             let httpResponse =
                 {
                     requestUri = requestUri
@@ -76,7 +62,6 @@ type HttpClient() =
                     contentType = contentType
                     isHtml = isHtml
                     html = html
-//                    hyperlinks = links
                 }
             return httpResponse
         }
@@ -91,11 +76,12 @@ type HttpClient() =
                 return Some httpResponse
             with _ -> return None
         }
-        |> Async.StartWithTimeout 60000.
+        |> Async.StartWithTimeout 60000
 
     interface IDisposable with
         member __.Dispose() = httpClient.Dispose()
 
+/// Sends an asynchronous GET request to the specified URL.
 let getAsync url =
     async {
         use client = new HttpClient()
@@ -105,6 +91,7 @@ let getAsync url =
         | Some x -> return x.html
     }    
 
+/// Sends a GET request to the specified URL.
 let get url =
     getAsync url
     |> Async.RunSynchronously

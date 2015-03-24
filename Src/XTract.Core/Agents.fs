@@ -17,12 +17,10 @@ type Status =
     | Paused
     | Working
 
-/// <summary>
 /// An agent for throttling the number of concurrently
 /// executing asynchronous workflows. The default limit
 /// is 5 concurrent tasks. The agent also supports pausing
 /// and resuming work.
-/// </summary>
 type ThrottlingAgent(?Limit) as this =
 
     let mutable status = Idle
@@ -134,3 +132,49 @@ type ThrottlingAgent(?Limit) as this =
 
     /// Gets the agent's status.
     member __.Status = status
+
+type LogMessage =
+    | Error of string
+    | Info of string
+    | Warning of string
+
+    override __.ToString() =
+        let date = DateTime.Now.ToString()
+        let label, msg =
+            match __ with
+            | Error x -> "Error", x
+            | Info x -> "Info", x
+            | Warning x -> "Warning", x
+        date + " - [" + label + "] " + msg
+
+/// A simple logging agent.
+type LoggingAgent() =
+
+    let agent =
+        MailboxProcessor.Start(fun inbox ->
+            let rec loop() =
+                async {
+                    let! msg = inbox.Receive()
+                    printfn "%s" <| msg.ToString()
+                    return! loop()
+                }
+            loop()
+        )
+
+    /// <summary>
+    /// Logs an error message.
+    /// </summary>
+    /// <param name="error">The error message.</param>
+    member __.LogError error = agent.Post <| Error error
+
+    /// <summary>
+    /// Logs an informative message.
+    /// </summary>
+    /// <param name="info">The informative message.</param>
+    member __.LogInfo info = agent.Post <| Info info
+
+    /// <summary>
+    /// Logs a warning message.
+    /// </summary>
+    /// <param name="warning">The warning message.</param>
+    member __.LogWarning warning = agent.Post <| Warning warning

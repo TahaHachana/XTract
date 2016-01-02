@@ -1,4 +1,5 @@
-﻿module XTract.Dynamic.SingleDynamicScraper
+﻿[<AutoOpen>]
+module XTract.Dynamic.SingleDynamicScraper
 
 open System.Collections.Concurrent
 open System.Collections.Generic
@@ -13,9 +14,6 @@ open OpenQA.Selenium.Chrome
 open Settings
 open XTract
 open XTract.Helpers
-open Crawler
-open OpenQA.Selenium.PhantomJS
-open OpenQA.Selenium.Remote
 
 type SingleDynamicScraper<'T when 'T : equality>(extractors, ?Options:ChromeOptions) =
 //    let browser = defaultArg Browser Phantom
@@ -122,20 +120,20 @@ type SingleDynamicScraper<'T when 'T : equality>(extractors, ?Options:ChromeOpti
         waitComplete()
 
     member __.CssSelect cssSelector =
-        Html.load driver.PageSource
-        |> fun x -> Html.cssSelect x cssSelector
+        Html.loadRoot driver.PageSource
+        |> fun x -> Html.cssSelect cssSelector x
 
     member __.CssSelectAll cssSelector =
-        Html.load driver.PageSource
-        |> fun x -> Html.cssSelectAll x cssSelector
+        Html.loadRoot driver.PageSource
+        |> fun x -> Html.cssSelectAll cssSelector x
 
     member __.XpathSelect xpath =
-        Html.load driver.PageSource
-        |> fun x -> Html.xpathSelect x xpath
+        Html.loadRoot driver.PageSource
+        |> fun x -> Html.xpathSelect xpath x
 
     member __.XpathSelectAll xpath =
-        Html.load driver.PageSource
-        |> fun x -> Html.xpathSelectAll x xpath
+        Html.loadRoot driver.PageSource
+        |> fun x -> Html.xpathSelectAll xpath x
 
     member __.PageSource = driver.PageSource
 

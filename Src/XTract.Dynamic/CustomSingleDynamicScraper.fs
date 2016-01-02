@@ -1,4 +1,5 @@
-﻿module XTract.Dynamic.CustomSingleDynamicScraper
+﻿[<AutoOpen>]
+module XTract.Dynamic.CustomSingleDynamicScraper
 
 open System.Collections.Concurrent
 open System.Collections.Generic
@@ -117,20 +118,20 @@ type CustomSingleDynamicScraper<'T when 'T : equality>(?Options:ChromeOptions) =
         waitComplete()
 
     member __.CssSelect cssSelector =
-        Html.load driver.PageSource
-        |> fun x -> Html.cssSelect x cssSelector
+        Html.loadRoot driver.PageSource
+        |> fun x -> Html.cssSelect cssSelector x
 
     member __.CssSelectAll cssSelector =
-        Html.load driver.PageSource
-        |> fun x -> Html.cssSelectAll x cssSelector
+        Html.loadRoot driver.PageSource
+        |> fun x -> Html.cssSelectAll cssSelector x
 
     member __.XpathSelect xpath =
-        Html.load driver.PageSource
-        |> fun x -> Html.xpathSelect x xpath
+        Html.loadRoot driver.PageSource
+        |> fun x -> Html.xpathSelect xpath x
 
     member __.XpathSelectAll xpath =
-        Html.load driver.PageSource
-        |> fun x -> Html.xpathSelectAll x xpath
+        Html.loadRoot driver.PageSource
+        |> fun x -> Html.xpathSelectAll xpath x
 
     member __.PageSource = driver.PageSource
 

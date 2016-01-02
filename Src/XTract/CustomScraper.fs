@@ -11,6 +11,7 @@ open CsvHelper
 open SpreadSharp
 open SpreadSharp.Collections
 open XTract.Helpers
+open XTract
 
 type CustomScraper<'T when 'T : equality>() =
     let dataStore = HashSet<'T>()
@@ -169,7 +170,7 @@ type CustomScraper<'T when 'T : equality>() =
                             | Some r -> pipeline.Post r
                     }                
                 )
-            let throttler = ThrottlingAgent()
+            let throttler = new ThrottlingAgent()
             do! throttler.Work asyncs
         }
 
@@ -194,7 +195,7 @@ type CustomScraper<'T when 'T : equality>() =
                                 lst |> List.iter pipeline.Post
                     }                
                 )
-            let throttler = ThrottlingAgent()
+            let throttler = new ThrottlingAgent()
             do! throttler.Work asyncs
         }
 

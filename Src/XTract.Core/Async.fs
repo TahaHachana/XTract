@@ -8,14 +8,14 @@ open System.Timers
 /// Checks the status of the supplied task recursively.
 /// Returns the task's result if it ran to completion and
 /// None if it faulted or was canceled.
-let rec private checkStatus (task: Task<'T option>) =
-    match task.Status with
-    | TaskStatus.Created
-    | TaskStatus.WaitingForActivation
-    | TaskStatus.WaitingToRun
-    | TaskStatus.Running -> checkStatus task
-    | TaskStatus.RanToCompletion -> task.Result
-    | _ -> None
+//let rec private checkStatus (task: Task<'T option>) =
+//    match task.Status with
+//    | TaskStatus.Created
+//    | TaskStatus.WaitingForActivation
+//    | TaskStatus.WaitingToRun
+//    | TaskStatus.Running -> checkStatus task
+//    | TaskStatus.RanToCompletion -> task.Result
+//    | _ -> None
 
 type Async with
 
@@ -37,8 +37,10 @@ type Async with
                 timer.Start()
 
                 let task = Async.StartAsTask(computation, cancellationToken = cancellationToken)
-                
-                let result = checkStatus task
+                task.Wait()
+
+//                while task.Status <> TaskStatus.RanToCompletion do ()
+                let result = task.Result
                 return result
             with _ -> return None
         }

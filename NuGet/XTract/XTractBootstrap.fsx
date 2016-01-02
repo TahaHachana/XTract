@@ -6,5 +6,5 @@
 #r """../../packages/Newtonsoft.Json.6.0.8/lib/net45/Newtonsoft.Json.dll"""
 #r """../../packages/SpreadSharp.0.3.1/lib/Net40/Microsoft.Office.Interop.Excel.dll"""
 #r """../../packages/SpreadSharp.0.3.1/lib/Net40/SpreadSharp.dll"""
-#r """../../packages/XTract.0.4.0/Lib/net40/XTract.Core.dll"""
-#r """../../packages/XTract.0.4.0/Lib/net40/XTract.dll"""
+#r """../../packages/XTract.0.4.2/Lib/net40/XTract.Core.dll"""
+#r """../../packages/XTract.0.4.2/Lib/net40/XTract.dll"""

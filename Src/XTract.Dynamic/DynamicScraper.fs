@@ -1,4 +1,5 @@
-﻿module XTract.Dynamic.DynamicScraper
+﻿[<AutoOpen>]
+module XTract.Dynamic.DynamicScraper
 
 open System.Collections.Concurrent
 open System.Collections.Generic

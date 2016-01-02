@@ -20,6 +20,8 @@ type HC = HttpClient
 type HttpClient() =
     // Init a System.Net.Http.HttpClient
     let httpClient = new HC()
+    do httpClient.Timeout <- TimeSpan.FromSeconds 55.
+
     // Pretend to be Googlebot
     do httpClient.DefaultRequestHeaders.Add("user-agent", "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)")
 

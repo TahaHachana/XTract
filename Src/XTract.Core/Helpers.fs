@@ -83,7 +83,7 @@ module Scrapers =
 
     let trueSingleEmpty (dictionary:Dictionary<string, obj>) =
         let key = "key" + (string <| dictionary.Count + 1)     
-        dictionary.Add(key, [])
+        dictionary.Add(key, [""])
 
     // many true & multiple attrs
     let trueMany (nodes:HtmlNode list) extractor (dictionary:Dictionary<string, obj>) =
@@ -111,7 +111,7 @@ module Scrapers =
 
     let trueManyEmpty (dictionary:Dictionary<string, obj>) =
         let key = "key" + (string <| dictionary.Count + 1)     
-        dictionary.Add(key, [])
+        dictionary.Add(key, [""])
 
     type Selection = SingleNode of HtmlNode | NodesList of HtmlNode list | SelectionFailed
 

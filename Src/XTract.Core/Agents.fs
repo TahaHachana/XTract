@@ -1,4 +1,5 @@
-﻿module XTract.Agents
+﻿[<AutoOpen>]
+module XTract.Agents
 
 open System
 open System.Collections.Concurrent

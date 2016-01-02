@@ -169,7 +169,7 @@ type Scraper<'T when 'T : equality>(extractors) =
                             | Some r -> pipeline.Post r
                     }                
                 )
-            let throttler = ThrottlingAgent()
+            let throttler = new ThrottlingAgent()
             do! throttler.Work asyncs
         }
 
@@ -193,7 +193,7 @@ type Scraper<'T when 'T : equality>(extractors) =
                                 lst |> List.iter pipeline.Post
                     }                
                 )
-            let throttler = ThrottlingAgent()
+            let throttler = new ThrottlingAgent()
             do! throttler.Work asyncs
         }
 
